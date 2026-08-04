@@ -109,7 +109,7 @@
         <option value="Xenova/whisper-small">small (빠른 동작 확인용 · 정확도 낮음)</option>
       </select>
     </div>
-    <div class="drop" id="drop">여기에 WAV 파일들을 끌어다 놓거나 클릭해서 선택
+    <div class="drop" id="drop"><span id="dropMsg">여기에 WAV 파일들을 끌어다 놓거나 클릭해서 선택</span>
       <input type="file" id="fileIn" multiple accept="audio/*" style="display:none">
     </div>
     <div class="row">
@@ -408,7 +408,7 @@ $("fileIn").onchange=e=>takeFiles(e.target.files);
 function takeFiles(list){
   FILES=[...list].filter(f=>/\.(wav|mp3|m4a|webm|ogg|flac)$/i.test(f.name));
   FILES.sort((a,b)=>a.name.localeCompare(b.name));
-  drop.textContent=FILES.length+"개 파일 선택됨 — "+FILES.map(f=>f.name).slice(0,4).join(", ")+(FILES.length>4?" …":"");
+  $("dropMsg").textContent=FILES.length+"개 파일 선택됨 — "+FILES.map(f=>f.name).slice(0,4).join(", ")+(FILES.length>4?" …":"");
   $("runBtn").disabled=!FILES.length;
   $("status").textContent=FILES.length?"준비 완료. [전사 및 채점 시작]을 누르세요.":"오디오 파일이 없습니다.";
 }
@@ -523,7 +523,7 @@ $("resetBtn").onclick=()=>{
   $("confWarn").classList.add("hidden");
   $("progFill").style.width="0%";
   $("runBtn").disabled=true;
-  drop.textContent="여기에 WAV 파일들을 끌어다 놓거나 클릭해서 선택";
+  $("dropMsg").textContent="여기에 WAV 파일들을 끌어다 놓거나 클릭해서 선택";
   $("status").textContent="파일을 선택하세요."+(loadedModel?" (모델은 이미 로드되어 있어 바로 시작됩니다)":"");
   window.scrollTo({top:0, behavior:"smooth"});
 };
