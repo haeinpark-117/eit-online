@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EIT Scoring Tool — browser Whisper</title>
+<style>
+  :root{
+    --bg:#fafafa; --panel:#fff; --ink:#18181b; --muted:#71717a; --line:#e4e4e7;
+    --accent:#4f46e5; --accent-dark:#4338ca; --accent-soft:#eef2ff;
+    --mild:#0e7490; --mild-bg:#ecfeff; --sev:#be185d; --sev-bg:#fdf2f8;
+    --pink:#ff1493;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
+    "Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    padding:70px 18px 60px; display:flex; flex-direction:column; align-items:center}
+  .hd{position:fixed; top:0; left:0; right:0; z-index:10; height:52px;
+    background:rgba(250,250,250,.94); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 20px}
+  .hd .t{font-weight:700; font-size:15px}
+  .hd .t span{font-weight:400; color:var(--muted); font-size:11px; margin-left:9px;
+    text-transform:uppercase; letter-spacing:.08em}
+  .stage{width:100%; max-width:880px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:24px 28px; margin-bottom:16px; box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  h1{font-size:20px; margin:0 0 4px; letter-spacing:-.02em}
+  .meta{font-size:12.5px; color:var(--muted)}
+  button{font:inherit; font-weight:600; cursor:pointer; border-radius:8px;
+    padding:10px 20px; border:1px solid transparent}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  .btn-p{background:var(--accent); color:#fff}
+  .btn-p:hover:not(:disabled){background:var(--accent-dark)}
+  .btn-g{background:#fff; color:#3f3f46; border-color:#d4d4d8}
+  .btn-g:hover:not(:disabled){background:var(--accent-soft)}
+  select{font:inherit; padding:8px 12px; border:1px solid #d4d4d8; border-radius:8px; background:#fff}
+  .drop{border:2px dashed #c7c7d1; border-radius:12px; padding:34px 20px; text-align:center;
+    color:var(--muted); font-size:14px; margin:16px 0; transition:all .15s; cursor:pointer}
+  .drop.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px}
+  .prog{height:7px; background:var(--line); border-radius:4px; overflow:hidden; flex:1}
+  .prog div{height:100%; background:var(--accent); width:0%; transition:width .2s}
+  .status{font-size:13px; color:var(--muted); min-height:20px; margin-top:8px; font-family:var(--mono)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0 4px}
+  .tile{border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+  .tile .v{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums}
+  .tile.hero .v{color:var(--accent)}
+  .tile .l{font-size:10.5px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.05em; margin-top:1px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:16px 20px 12px; margin-bottom:11px}
+  .card.sevb{border-left:4px solid #ec4899}
+  .ctop{display:flex; justify-content:space-between; align-items:baseline}
+  .ctop .it{font-weight:700; font-size:14.5px}
+  .ctop .it small{color:var(--muted); font-weight:400; margin-left:7px}
+  .acc{font-size:18px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums}
+  .acc.low{color:var(--sev)}
+  .scoreline{display:flex; align-items:center; gap:12px; margin:9px 0 10px}
+  .play{width:32px; height:32px; border-radius:50%; border:1px solid var(--accent);
+    background:#fff; color:var(--accent); font-size:12px; flex:none; padding:0}
+  .bar{flex:1; height:7px; background:var(--line); border-radius:4px; overflow:hidden}
+  .bar div{height:100%; background:var(--accent)}
+  .nums{font-family:var(--mono); font-size:12px; color:var(--muted); flex:none}
+  .gtr{font-family:var(--mono); font-size:13px; line-height:1.85;
+    background:#f8fafc; border:1px solid var(--line); border-radius:6px;
+    padding:7px 11px; overflow-x:auto; white-space:nowrap}
+  .gtr .tag{display:inline-block; width:28px; color:var(--muted); font-size:10.5px}
+  .w-sub{background:#cffafe; border-radius:3px; padding:0 2px}
+  .w-ins{background:#fbcfe8; border-radius:3px; padding:0 2px}
+  .w-om{color:#db2777; font-weight:700}
+  .note{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.7}
+  .hidden{display:none}
+  .warnbox{background:var(--sev-bg); border:1px solid #fbcfe8; color:var(--sev);
+    border-radius:8px; padding:10px 14px; font-size:13px; margin-top:12px}
+  @media(max-width:680px){ .tiles{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+<div class="hd">
+  <div class="t">English Elicited Imitation Task<span>Scoring tool · runs in your browser</span></div>
+  <div class="meta" id="gpuBadge"></div>
+</div>
+<div class="stage">
+
+  <div class="panel">
+    <h1>자동 전사 · 채점</h1>
+    <p class="meta">참가자에게 받은 녹음 파일(<span style="font-family:var(--mono)">참가자ID_item번호.wav</span>)을
+      올리면 Whisper가 <b>이 브라우저 안에서</b> 전사하고 EIT A 목표 문장과 대조해 채점합니다.
+      음성은 컴퓨터 밖으로 전송되지 않습니다.</p>
+    <div class="row">
+      <label class="meta">모델:</label>
+      <select id="modelSel">
+        <option value="onnx-community/whisper-large-v3-turbo">large-v3-turbo (권장 · 첫 로드 시 대용량 다운로드)</option>
+        <option value="Xenova/whisper-small">small (빠른 동작 확인용 · 정확도 낮음)</option>
+      </select>
+    </div>
+    <div class="drop" id="drop">여기에 WAV 파일들을 끌어다 놓거나 클릭해서 선택
+      <input type="file" id="fileIn" multiple accept="audio/*" style="display:none">
+    </div>
+    <div class="row">
+      <button class="btn-p" id="runBtn" disabled>전사 및 채점 시작</button>
+      <button class="btn-g" id="csvBtn" disabled>CSV 내보내기</button>
+      <button class="btn-g" id="jsonBtn" disabled>결과 JSON 내보내기</button>
+      <div class="prog"><div id="progFill"></div></div>
+    </div>
+    <div class="status" id="status">파일을 선택하세요.</div>
+    <div class="warnbox hidden" id="wgpuWarn">이 브라우저는 WebGPU를 지원하지 않아 CPU(WASM)로
+      실행됩니다 — 매우 느릴 수 있습니다. 최신 Chrome/Edge 사용을 권장합니다.</div>
+  </div>
+
+  <div class="panel hidden" id="sumPanel">
+    <h1 id="sumTitle">결과</h1>
+    <div class="meta" id="sumMeta"></div>
+    <div class="tiles">
+      <div class="tile hero"><div class="v" id="tAcc">—</div><div class="l">Mean accuracy</div></div>
+      <div class="tile"><div class="v" id="tWer">—</div><div class="l">Mean WER</div></div>
+      <div class="tile"><div class="v" id="tCer">—</div><div class="l">Mean CER</div></div>
+      <div class="tile"><div class="v" id="tN">—</div><div class="l">Items scored</div></div>
+    </div>
+  </div>
+
+  <div id="cards"></div>
+  <div class="note" style="text-align:center">채점: 소문자화 + 구두점 제거(normalizer v1) 후
+    단어 단위 최소 편집 정렬 · WER = (대치+누락+삽입)/기준 단어 수, 1.0에서 절단 ·
+    Colab 파이프라인(faster-whisper large-v3, beam 5)과 모델·디코딩이 달라 전사가 미세하게 다를 수 있습니다.</div>
+</div>
+
+<script type="module">
+const TARGETS = {
+ 1:"I have to get a haircut.", 2:"The red book is on the table.",
+ 3:"The streets in this city are wide.", 4:"He takes a shower every morning.",
+ 5:"What did you say you were doing today?", 6:"I doubt that he knows how to drive that well.",
+ 7:"After dinner I had a long, peaceful nap.", 8:"It is possible that it will rain tomorrow.",
+ 9:"I enjoy movies which have a happy ending.", 10:"The houses are very nice but too expensive.",
+ 11:"The little boy whose kitten died yesterday is sad.", 12:"That restaurant is supposed to have very good food.",
+ 13:"I want a nice, big house in which my animals can live.", 14:"You really enjoy listening to country music, don't you?",
+ 15:"She just finished painting the inside of her apartment.", 16:"Cross the street at the light and then just continue straight ahead.",
+ 17:"The person I'm dating has a wonderful sense of humor.", 18:"She only orders meat dishes and never eats vegetables.",
+ 19:"I wish the price of town houses would become affordable.", 20:"I hope it will get warmer sooner this year than it did last year.",
+ 21:"A good friend of mine always takes care of my neighbor's three children.", 22:"The black cat that you fed yesterday was the one chased by the dog.",
+ 23:"Before he can go outside, he has to finish cleaning his room.", 24:"The most fun I've ever had was when we went to the opera.",
+ 25:"The terrible thief whom the police caught was very tall and thin.", 26:"Would you be so kind as to hand me the book which is on the table?",
+ 27:"The number of people who smoke cigars is increasing every year.", 28:"I don't know if the eleven thirty train has left the station yet.",
+ 29:"The exam wasn't nearly as difficult as you told me it would be.", 30:"There are a lot of people who don't eat anything at all in the morning.",
+};
+const SYL=[7,8,8,9,10,10,11,12,12,12,13,13,14,14,14,15,15,15,15,16,16,16,16,16,16,17,17,17,18,19];
+const $=id=>document.getElementById(id);
+const FNAME_RE=/^(.+?)_item(\d{1,2})(?:_v(\d+))?\.[A-Za-z0-9]+$/;
+
+/* ---------- normalizer v1 (identical to the Colab pipeline) ---------- */
+function normalize(s){
+  return String(s).toLowerCase().replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim();
+}
+/* ---------- minimum-edit alignment (word level) -> ops like jiwer ---------- */
+function align(refW,hypW){
+  const n=refW.length,m=hypW.length;
+  const D=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=0;i<=n;i++)D[i][0]=i;
+  for(let j=0;j<=m;j++)D[0][j]=j;
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    const c=refW[i-1]===hypW[j-1]?0:1;
+    D[i][j]=Math.min(D[i-1][j-1]+c, D[i-1][j]+1, D[i][j-1]+1);
+  }
+  const raw=[]; let i=n,j=m;
+  while(i>0||j>0){
+    if(i>0&&j>0&&D[i][j]===D[i-1][j-1]+(refW[i-1]===hypW[j-1]?0:1)){
+      raw.push({t:refW[i-1]===hypW[j-1]?"eq":"sub", r:[refW[i-1]], h:[hypW[j-1]]}); i--; j--;
+    }else if(i>0&&D[i][j]===D[i-1][j]+1){ raw.push({t:"del", r:[refW[i-1]], h:[]}); i--; }
+    else{ raw.push({t:"ins", r:[], h:[hypW[j-1]]}); j--; }
+  }
+  raw.reverse();
+  const ops=[]; let S=0,Dl=0,I=0;
+  for(const o of raw){
+    if(o.t==="sub")S++; else if(o.t==="del")Dl++; else if(o.t==="ins")I++;
+    const last=ops[ops.length-1];
+    if(last&&last.t===o.t){ last.r.push(...o.r); last.h.push(...o.h); }
+    else ops.push({t:o.t, r:[...o.r], h:[...o.h]});
+  }
+  return {ops,S,D:Dl,I};
+}
+function charDist(a,b){
+  const n=a.length,m=b.length;
+  let prev=new Array(m+1); for(let j=0;j<=m;j++)prev[j]=j;
+  for(let i=1;i<=n;i++){
+    const cur=[i];
+    for(let j=1;j<=m;j++)
+      cur[j]=Math.min(prev[j-1]+(a[i-1]===b[j-1]?0:1), prev[j]+1, cur[j-1]+1);
+    prev=cur;
+  }
+  return prev[m];
+}
+function scorePair(target,hyp){
+  const gt=normalize(target), tr=normalize(hyp);
+  const refW=gt?gt.split(" "):[];
+  if(!tr) return {wer:1,cer:1,acc:0,ops:[],gt,tr};
+  const {ops,S,D,I}=align(refW, tr.split(" "));
+  const wer=refW.length?Math.min(1,(S+D+I)/refW.length):1;
+  const cer=gt.length?Math.min(1,charDist(gt,tr)/gt.length):1;
+  return {wer:+wer.toFixed(4), cer:+cer.toFixed(4), acc:+((1-wer)*100).toFixed(1), ops, gt, tr};
+}
+
+/* ---------- audio decode to 16 kHz mono ---------- */
+async function decodeTo16k(file){
+  const buf=await file.arrayBuffer();
+  const ctx=new OfflineAudioContext(1,1,16000);
+  const audio=await new AudioContext().decodeAudioData(buf.slice(0));
+  const off=new OfflineAudioContext(1, Math.ceil(audio.duration*16000), 16000);
+  const src=off.createBufferSource(); src.buffer=audio; src.connect(off.destination); src.start();
+  const out=await off.startRendering();
+  return {data:out.getChannelData(0), dur:audio.duration};
+}
+
+/* ---------- state ---------- */
+let FILES=[], RESULTS=[], transcriber=null, loadedModel=null;
+const hasGPU=!!navigator.gpu;
+$("gpuBadge").textContent = hasGPU ? "WebGPU ✓" : "CPU (WASM)";
+if(!hasGPU) $("wgpuWarn").classList.remove("hidden");
+
+const drop=$("drop");
+drop.onclick=()=>$("fileIn").click();
+drop.ondragover=e=>{e.preventDefault(); drop.classList.add("on");};
+drop.ondragleave=()=>drop.classList.remove("on");
+drop.ondrop=e=>{e.preventDefault(); drop.classList.remove("on"); takeFiles(e.dataTransfer.files);};
+$("fileIn").onchange=e=>takeFiles(e.target.files);
+
+function takeFiles(list){
+  FILES=[...list].filter(f=>/\.(wav|mp3|m4a|webm|ogg|flac)$/i.test(f.name));
+  FILES.sort((a,b)=>a.name.localeCompare(b.name));
+  drop.textContent=FILES.length+"개 파일 선택됨 — "+FILES.map(f=>f.name).slice(0,4).join(", ")+(FILES.length>4?" …":"");
+  $("runBtn").disabled=!FILES.length;
+  $("status").textContent=FILES.length?"준비 완료. [전사 및 채점 시작]을 누르세요.":"오디오 파일이 없습니다.";
+}
+
+async function loadModel(id){
+  if(transcriber&&loadedModel===id) return transcriber;
+  $("status").textContent="모델 로드 중… (첫 사용 시 다운로드 후 브라우저에 캐시됩니다)";
+  const {pipeline}=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0");
+  const opts={
+    device: hasGPU?"webgpu":"wasm",
+    dtype: id.includes("turbo")?{encoder_model:"fp16",decoder_model_merged:"q4"}:"q8",
+    progress_callback:p=>{
+      if(p.status==="progress"&&p.total)
+        $("status").textContent="모델 다운로드: "+p.file+" "+Math.round(p.progress)+"%";
+    }
+  };
+  transcriber=await pipeline("automatic-speech-recognition", id, opts);
+  loadedModel=id;
+  return transcriber;
+}
+
+$("runBtn").onclick=async()=>{
+  $("runBtn").disabled=true; RESULTS=[]; $("cards").innerHTML="";
+  const t0=performance.now();
+  try{
+    const asr=await loadModel($("modelSel").value);
+    for(let k=0;k<FILES.length;k++){
+      const f=FILES[k];
+      $("status").textContent="전사 중 ("+(k+1)+"/"+FILES.length+"): "+f.name;
+      $("progFill").style.width=(k/FILES.length*100)+"%";
+      const m=f.name.match(FNAME_RE);
+      const pid=m?m[1]:"?", item=m?parseInt(m[2],10):null;
+      let text="", dur=null, err=null;
+      try{
+        const {data,dur:d}=await decodeTo16k(f); dur=d;
+        const out=await asr(data,{language:"english",task:"transcribe"});
+        text=(out.text||"").trim();
+      }catch(e){ err=String(e&&e.message||e); }
+      const target=item?TARGETS[item]||"":"";
+      const sc=target?scorePair(target,text):null;
+      RESULTS.push({file:f, name:f.name, pid, item, target, text, dur, err, sc});
+      renderCard(RESULTS[RESULTS.length-1]);
+      renderSummary();
+    }
+    $("progFill").style.width="100%";
+    $("status").textContent="완료 — "+FILES.length+"개 파일, "+((performance.now()-t0)/1000).toFixed(1)+"초 "+
+      "("+loadedModel.split("/").pop()+", "+(hasGPU?"WebGPU":"WASM")+")";
+    $("csvBtn").disabled=$("jsonBtn").disabled=false;
+  }catch(e){
+    $("status").textContent="오류: "+(e&&e.message||e);
+  }
+  $("runBtn").disabled=false;
+};
+
+function diffHtml(sc,text){
+  if(!sc||!sc.ops.length)
+    return "<span class='w-om'>"+esc(text||"(no speech detected)")+"</span>";
+  return sc.ops.map(o=>{
+    const h=o.h.join(" "), r=o.r.join(" ");
+    if(o.t==="eq")return esc(h);
+    if(o.t==="sub")return "<span class='w-sub' title='for: "+esc(r)+"'>"+esc(h)+"</span>";
+    if(o.t==="ins")return "<span class='w-ins' title='inserted'>"+esc(h)+"</span>";
+    return "<span class='w-om' title='omitted: "+esc(r)+"'>▲</span>";
+  }).join(" ");
+}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+
+function renderCard(r){
+  const d=document.createElement("div");
+  const acc=r.sc?r.sc.acc:null;
+  d.className="card"+(r.err||(acc!==null&&acc<50)?" sevb":"");
+  const syl=r.item?SYL[r.item-1]:"";
+  d.innerHTML=
+    "<div class='ctop'><span class='it'>"+(r.item?"Item "+r.item:esc(r.name))+
+    "<small>"+esc(r.pid)+(syl?" · "+syl+" syll":"")+(r.dur?" · "+r.dur.toFixed(1)+" s":"")+"</small></span>"+
+    "<span class='acc"+(acc!==null&&acc<50?" low":"")+"'>"+(acc===null?"—":acc.toFixed(1)+"%")+"</span></div>"+
+    "<div class='scoreline'><button class='play'>▶</button>"+
+    "<div class='bar'><div style='width:"+(acc||0)+"%'></div></div>"+
+    "<span class='nums'>WER "+(r.sc?r.sc.wer.toFixed(3).replace(/^0/,""):"—")+
+    " · CER "+(r.sc?r.sc.cer.toFixed(3).replace(/^0/,""):"—")+"</span></div>"+
+    (r.err?"<div class='warnbox'>"+esc(r.err)+"</div>":
+    "<div class='gtr'><span class='tag'>GT</span>"+esc(r.sc?r.sc.gt:"")+"<br>"+
+    "<span class='tag'>TR</span>"+diffHtml(r.sc,r.text)+"</div>");
+  d.querySelector(".play").onclick=function(){ new Audio(URL.createObjectURL(r.file)).play(); };
+  $("cards").appendChild(d);
+}
+function renderSummary(){
+  const scored=RESULTS.filter(r=>r.sc);
+  if(!scored.length)return;
+  $("sumPanel").classList.remove("hidden");
+  const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  $("tAcc").textContent=mean(scored.map(r=>r.sc.acc)).toFixed(1)+"%";
+  $("tWer").textContent=mean(scored.map(r=>r.sc.wer)).toFixed(3).replace(/^0/,"");
+  $("tCer").textContent=mean(scored.map(r=>r.sc.cer)).toFixed(3).replace(/^0/,"");
+  $("tN").textContent=scored.length+" /"+RESULTS.length;
+  const pids=[...new Set(RESULTS.map(r=>r.pid))];
+  $("sumTitle").textContent="결과 — "+pids.join(", ");
+  $("sumMeta").textContent=(loadedModel||"")+" · greedy decoding · normalizer v1 · in-browser ("+(hasGPU?"WebGPU":"WASM")+")";
+}
+
+$("csvBtn").onclick=()=>{
+  const cols=["participant","item","target","transcription","wer","cer","accuracy_pct","duration_s","file","model"];
+  const rows=[cols.join(",")];
+  RESULTS.forEach(r=>rows.push([r.pid,r.item??"",r.target,r.text,
+    r.sc?r.sc.wer:"",r.sc?r.sc.cer:"",r.sc?r.sc.acc:"",
+    r.dur?r.dur.toFixed(2):"",r.name,loadedModel].map(v=>{
+      v=String(v??""); return (v.includes(",")||v.includes('"'))?'"'+v.replace(/"/g,'""')+'"':v;
+    }).join(",")));
+  dl(new Blob([rows.join("\n")],{type:"text/csv"}),"eit_scores.csv");
+};
+$("jsonBtn").onclick=()=>{
+  const pids=[...new Set(RESULTS.map(r=>r.pid))];
+  const out={participant:pids.join("+"),
+    meta:{whisper_model:loadedModel,decoding:"greedy (transformers.js, in-browser)",
+      normalizer:"v1 (lowercase; strip all but [a-z0-9' ]; collapse whitespace)",
+      scored_at:new Date().toISOString()},
+    items:RESULTS.map(r=>({item:r.item,target:r.target,transcription_raw:r.text,
+      transcription_corrected:null,wer:r.sc?r.sc.wer:null,cer:r.sc?r.sc.cer:null,
+      accuracy_pct:r.sc?r.sc.acc:null,ops:r.sc?r.sc.ops:null,
+      duration_s:r.dur?+r.dur.toFixed(2):null,flag:"",file:r.name,reviewed:false}))};
+  dl(new Blob([JSON.stringify(out,null,1)],{type:"application/json"}),
+     (pids[0]||"results")+"_results.json");
+};
+function dl(blob,name){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+</script>
+</body>
+</html>
