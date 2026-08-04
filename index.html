@@ -88,6 +88,30 @@
     .welcome-wrap{grid-template-columns:1fr; gap:34px}
     .wdesc{max-width:none}
   }
+  /* --- mic check (stepper layout) --- */
+  .mic-split{display:grid; grid-template-columns:210px 1fr; gap:34px; margin-top:8px}
+  .mic-side{border-right:1px solid var(--line); padding-right:24px}
+  .sitem{display:flex; gap:12px; align-items:center; padding:12px 0;
+    font-size:14px; color:var(--muted)}
+  .sitem .dot{width:26px; height:26px; border-radius:50%; border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+    font-weight:700; flex:0 0 auto; background:#fff; color:var(--muted)}
+  .sitem.done{color:var(--ink); cursor:pointer}
+  .sitem.done .dot{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+  .sitem.now{color:var(--ink); font-weight:700}
+  .sitem.now .dot{background:var(--accent); border-color:var(--accent); color:#fff}
+  .mic-content h3{font-size:17px; margin:0 0 6px}
+  .mic-content .hint{margin-bottom:18px}
+  .note-ok{display:inline-flex; align-items:center; gap:8px; font-size:13px;
+    color:var(--accent); background:var(--accent-soft); border-radius:999px;
+    padding:6px 14px; font-weight:600}
+  .mic-fmt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+    color:#a1a1aa; margin-top:24px; min-height:14px}
+  @media(max-width:640px){
+    .mic-split{grid-template-columns:1fr; gap:20px}
+    .mic-side{border-right:none; padding-right:0; display:flex; gap:16px}
+    .sitem{padding:4px 0}
+  }
   button{
     font:inherit; font-weight:600; cursor:pointer; border-radius:8px;
     padding:11px 26px; border:1px solid transparent; transition:background .15s,opacity .15s;
@@ -279,60 +303,86 @@
 <section class="screen" id="screen-mic">
   <div class="panel">
     <h2 data-i18n="micTitle">Microphone check</h2>
-    <p class="sub" data-i18n="micSub">We need access to your microphone in order to record your responses.</p>
-    <div class="note" id="micNote" data-i18n="micNote" data-i18n-html>
-      Select <strong>Allow</strong> when your browser asks for microphone permission.
-    </div>
-    <div class="row"><button class="btn-primary" id="grantBtn" data-i18n="btnEnableMic">Enable microphone</button></div>
+    <p class="sub" data-i18n="micStepSub">Follow the steps below.</p>
 
-    <div id="micTestBlock" style="display:none; margin-top:26px">
-      <p data-i18n="micCheckIntro">The check below measures your background noise and your speaking level, then
-         sets the recording gain for you. It takes about eight seconds.</p>
-      <div class="meter">
-        <div class="zone"></div>
-        <div class="fill" id="levelFill"></div>
-        <div class="peak" id="levelPeak"></div>
+    <div class="mic-split">
+      <div class="mic-side">
+        <div class="sitem now" id="sitem1"><span class="dot">1</span>
+          <span data-i18n="stepLbl1">Microphone access</span></div>
+        <div class="sitem" id="sitem2"><span class="dot">2</span>
+          <span data-i18n="stepLbl2">Set recording level</span></div>
+        <div class="sitem" id="sitem3"><span class="dot">3</span>
+          <span data-i18n="stepLbl3">Headphone check</span></div>
       </div>
-      <div class="meter-labels"><span>-60</span><span>-40</span><span>-20</span>
-        <span>0 dBFS peak</span></div>
-      <div class="meter-verdict" id="levelVerdict"></div>
 
-      <div class="row">
-        <button class="btn-primary" id="checkBtn" data-i18n="btnRunCheck">Run microphone check</button>
-        <button class="btn-ghost" id="testRecBtn" data-i18n="btnTestRec">Record 4-second test</button>
-        <button class="btn-ghost" id="playTestBtn" disabled data-i18n="btnPlayBack">Play back</button>
-      </div>
-      <div id="checkStatus" class="meter-verdict" style="min-height:0"></div>
-      <div id="calibResult" class="hint"></div>
-      <div id="snrReport" class="log" style="display:none"></div>
-
-      <details style="margin-top:18px">
-        <summary style="cursor:pointer; font-size:13px; color:var(--muted)"
-          data-i18n="gainSummary">Adjust the gain manually</summary>
-        <div style="margin-top:12px">
-          <div class="slider-row">
-            <input type="range" id="gainSlider" min="-20" max="40" step="1">
-            <span class="slider-val" id="gainVal">0 dB</span>
+      <div class="mic-content">
+        <!-- STEP 1 : permission -->
+        <div class="mstep" id="mstep1">
+          <h3 data-i18n="stepLbl1">Microphone access</h3>
+          <p class="hint" data-i18n="micSub">We need access to your microphone in order to record your responses.</p>
+          <div class="note" id="micNote" data-i18n="micNote" data-i18n-html>
+            Select <strong>Allow</strong> when your browser asks for microphone permission.
           </div>
-          <div class="hint">A fixed, linear boost applied before recording. Unlike automatic
-            gain control it does not vary during speech, so relative amplitude is preserved.
-            If even +40 dB is not enough, raise the input volume for this microphone in your
-            operating system's sound settings — that is a hardware-level gain this page
-            cannot reach.</div>
+          <div class="row"><button class="btn-primary" id="grantBtn" data-i18n="btnEnableMic">Enable microphone</button></div>
         </div>
-      </details>
-      <div class="note" style="margin-top:20px">
-        <span data-i18n="headphoneNote" data-i18n-html><strong>Headphone check.</strong>
-        Confirm you can hear this tone through your headphones, not through your
-        computer speakers.</span>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-ghost" id="toneBtn" data-i18n="btnTestTone">Play test tone</button>
+
+        <!-- STEP 2 : level calibration -->
+        <div class="mstep" id="mstep2" style="display:none">
+          <span class="note-ok" data-i18n="micOkBadge">&#10003; Microphone is on</span>
+          <h3 data-i18n="stepLbl2Title" style="margin-top:16px">Set the recording level</h3>
+          <p class="hint" data-i18n="micCheckIntro">The check below measures your background noise and your speaking level, then
+             sets the recording gain for you. It takes about eight seconds.</p>
+          <div class="meter">
+            <div class="zone"></div>
+            <div class="fill" id="levelFill"></div>
+            <div class="peak" id="levelPeak"></div>
+          </div>
+          <div class="meter-labels"><span>-60</span><span>-40</span><span>-20</span>
+            <span>0 dBFS peak</span></div>
+          <div class="meter-verdict" id="levelVerdict"></div>
+
+          <div class="row">
+            <button class="btn-primary" id="checkBtn" data-i18n="btnRunCheck">Run microphone check</button>
+            <button class="btn-ghost" id="testRecBtn" data-i18n="btnTestRec">Record 4-second test</button>
+            <button class="btn-ghost" id="playTestBtn" disabled data-i18n="btnPlayBack">Play back</button>
+          </div>
+          <div id="checkStatus" class="meter-verdict" style="min-height:0"></div>
+          <div id="calibResult" class="hint"></div>
+          <div id="snrReport" class="log" style="display:none"></div>
+
+          <details style="margin-top:18px">
+            <summary style="cursor:pointer; font-size:13px; color:var(--muted)"
+              data-i18n="gainSummary">Adjust the gain manually</summary>
+            <div style="margin-top:12px">
+              <div class="slider-row">
+                <input type="range" id="gainSlider" min="-20" max="40" step="1">
+                <span class="slider-val" id="gainVal">0 dB</span>
+              </div>
+              <div class="hint">A fixed, linear boost applied before recording. Unlike automatic
+                gain control it does not vary during speech, so relative amplitude is preserved.
+                If even +40 dB is not enough, raise the input volume for this microphone in your
+                operating system's sound settings — that is a hardware-level gain this page
+                cannot reach.</div>
+            </div>
+          </details>
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn-primary" id="toStep3Btn" data-i18n="btnNextStep">Next step</button>
+          </div>
         </div>
-      </div>
-      <div class="row">
-        <button class="btn-primary" id="toPracticeBtn" data-i18n="btnContinue2">Continue</button>
+
+        <!-- STEP 3 : headphone check -->
+        <div class="mstep" id="mstep3" style="display:none">
+          <h3 data-i18n="stepLbl3">Headphone check</h3>
+          <p class="hint" data-i18n="step3Hint">Confirm the tone plays through your headphones,
+            not through your computer speakers.</p>
+          <div class="row"><button class="btn-ghost" id="toneBtn" data-i18n="btnTestTone">Play test tone</button></div>
+          <div class="row" style="justify-content:flex-end; margin-top:26px">
+            <button class="btn-primary" id="toPracticeBtn" data-i18n="btnContinue2">Continue</button>
+          </div>
+        </div>
       </div>
     </div>
+    <div class="mic-fmt" id="micFmt"></div>
   </div>
 </section>
 
@@ -765,6 +815,14 @@ en: {
   phBlockDone: "Block complete",
   phAudioError: "Audio error",
   micEnabled: "Microphone enabled. Recording format:",
+  micStepSub: "Follow the steps below.",
+  stepLbl1: "Microphone access",
+  stepLbl2: "Set recording level",
+  stepLbl2Title: "Set the recording level",
+  stepLbl3: "Headphone check",
+  micOkBadge: "✓ Microphone is on",
+  step3Hint: "Confirm the tone plays through your headphones, not through your computer speakers.",
+  btnNextStep: "Next step",
   checkSilent: "Stay completely silent…",
   checkSpeak: "Now say a full sentence, at your normal speaking volume…",
   vNoSpeech: "No speech detected — check that the right microphone is selected.",
@@ -876,6 +934,14 @@ ko: {
   phBlockDone: "완료",
   phAudioError: "오디오 오류",
   micEnabled: "마이크가 켜졌습니다. 녹음 형식:",
+  micStepSub: "단계를 따라 진행해 주세요.",
+  stepLbl1: "마이크 권한",
+  stepLbl2: "음량 자동 설정",
+  stepLbl2Title: "녹음 음량 자동 설정",
+  stepLbl3: "헤드폰 확인",
+  micOkBadge: "✓ 마이크가 켜졌습니다",
+  step3Hint: "신호음이 컴퓨터 스피커가 아니라 헤드폰에서 들리는지 확인하세요.",
+  btnNextStep: "다음 단계",
   checkSilent: "잠시 완전히 조용히 계십시오…",
   checkSpeak: "이제 평소 크기의 목소리로 한 문장을 말해 보십시오…",
   vNoSpeech: "음성이 감지되지 않았습니다. 올바른 마이크가 선택되어 있는지 확인하십시오.",
@@ -1866,20 +1932,36 @@ $("pid").addEventListener("input", e => {
 });
 $("toMicBtn").onclick = () => { S.pid = $("pid").value; show("screen-mic"); };
 
+/* mic-check stepper: 1 = permission, 2 = level, 3 = headphones */
+S.micStepMax = 1;
+function micStep(n){
+  if (n > S.micStepMax) S.micStepMax = n;
+  [1,2,3].forEach(i => {
+    $("mstep" + i).style.display = (i === n) ? "block" : "none";
+    const it = $("sitem" + i);
+    it.classList.toggle("now", i === n);
+    it.classList.toggle("done", i < n || (i !== n && i <= S.micStepMax));
+    const dot = it.querySelector(".dot");
+    dot.innerHTML = (i !== n && i <= S.micStepMax) ? "&#10003;" : String(i);
+  });
+}
+[1,2,3].forEach(i => {
+  $("sitem" + i).onclick = () => { if (i <= S.micStepMax) micStep(i); };
+});
+$("toStep3Btn").onclick = () => micStep(3);
+
 $("grantBtn").onclick = async () => {
   $("grantBtn").disabled = true;
   try{
     await requestMic();
-    $("micNote").removeAttribute("data-i18n");
-    $("micNote").innerHTML = T("micEnabled") + " <strong>" +
+    $("micFmt").textContent = "REC FORMAT · " +
       (CFG.recordFormat === "wav16"
         ? S.recCtx.sampleRate / 1000 + " kHz mono WAV"
-        : (S.mimeType || "browser default")) + "</strong>";
-    $("micTestBlock").style.display = "block";
-    $("grantBtn").style.display = "none";
+        : (S.mimeType || "browser default"));
     $("gainSlider").value = CFG.inputGainDb;
     $("gainVal").textContent = fmtDb(CFG.inputGainDb);
     startLevelMeter($("levelFill"), $("levelPeak"), $("levelVerdict"));
+    micStep(2);
   }catch(e){
     $("micNote").className = "note warn";
     $("micNote").innerHTML = "<strong>Microphone unavailable.</strong> " +
