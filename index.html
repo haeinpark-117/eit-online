@@ -10,7 +10,7 @@
     --bg:#fafafa; --panel:#ffffff; --ink:#18181b; --muted:#71717a;
     --line:#e4e4e7; --navy:#18181b; --navy-2:#27272a;
     --accent:#4f46e5; --accent-dark:#4338ca; --accent-soft:#eef2ff;
-    --warn:#8a6d1f; --rec:#dc2626;
+    --warn:#8a6d1f; --mild:#0e7490; --sev:#be185d; --rec:#dc2626;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;min-height:100%}
@@ -156,7 +156,7 @@
     max-height:240px; overflow-y:auto; border:1px solid var(--line);
     border-radius:8px; padding:12px; margin-bottom:18px}
   .file-list div{display:flex; justify-content:space-between; padding:3px 0}
-  .ok{color:#16a34a} .bad{color:var(--warn)}
+  .ok{color:var(--accent)} .bad{color:var(--sev)} .lvl-warn{color:var(--mild)}
   @media(max-width:560px){
     .panel{padding:28px 22px} .cfg-grid{grid-template-columns:1fr}
     .site-title .site-sub{display:none}
@@ -256,8 +256,8 @@
           data-i18n="gainSummary">Adjust the gain manually</summary>
         <div style="margin-top:12px">
           <div class="slider-row">
-            <input type="range" id="gainSlider" min="0" max="40" step="1">
-            <span class="slider-val" id="gainVal">+12 dB</span>
+            <input type="range" id="gainSlider" min="-20" max="40" step="1">
+            <span class="slider-val" id="gainVal">0 dB</span>
           </div>
           <div class="hint">A fixed, linear boost applied before recording. Unlike automatic
             gain control it does not vary during speech, so relative amplitude is preserved.
@@ -330,6 +330,20 @@
     </div>
   </div>
 </section>
+
+<!-- ============ NO-SIGNAL WARNING ============ -->
+<div id="signalOverlay" class="overlay" style="display:none">
+  <div class="overlay-panel">
+    <h2 data-i18n="signalTitle">No sound is being recorded</h2>
+    <p data-i18n="signalText">The last few responses contained no microphone signal.
+       Please check that your microphone is connected and that its input volume is on,
+       then continue. Completed items are saved either way.</p>
+    <div class="row">
+      <button class="btn-primary" id="signalContinueBtn" data-i18n="signalContinue">Continue the test</button>
+      <button class="btn-danger" id="signalStopBtn" data-i18n="signalStop">Stop the test</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ WITHDRAW CONFIRMATION ============ -->
 <div id="stopOverlay" class="overlay" style="display:none">
@@ -457,7 +471,7 @@
       </div>
       <div>
         <label for="cfgGainDb">Input gain (dB)</label>
-        <input type="number" id="cfgGainDb" min="0" max="30" step="1">
+        <input type="number" id="cfgGainDb" min="-20" max="40" step="1">
         <div class="hint">Fixed linear boost. Hold this constant across the whole study
           if amplitude is a variable of interest.</div>
       </div>
@@ -574,7 +588,7 @@ const DEFAULTS = {
   echoCancellation: false,
   noiseSuppression: false,
   autoGainControl:  false,
-  inputGainDb: 12,          // fixed linear boost applied before recording
+  inputGainDb: 0,           // fixed linear gain (attenuation allowed; calibration sets it)
   allowCalibration: 1,      // 0 = participants cannot run the gain-setting check
   recordFormat: "wav16",    // "wav16" = 16 kHz mono PCM (Whisper-native) | "codec"
   uiLang: "en",             // default participant interface language: "en" | "ko"
@@ -659,6 +673,12 @@ en: {
   doneWithdrawnTitle: "Test stopped",
   doneWithdrawnSub: "You have withdrawn from the test. Responses recorded up to " +
     "this point have been saved. Thank you for your time.",
+  signalTitle: "No sound is being recorded",
+  signalText: "The last few responses contained no microphone signal. Please check " +
+    "that your microphone is connected and that its input volume is on, then " +
+    "continue. Completed items are saved either way.",
+  signalContinue: "Continue the test",
+  signalStop: "Stop the test",
   btnZip: "Download all recordings",
   btnRetry: "Retry failed uploads",
   footer: "For research use only. Audio is recorded during this session with the " +
@@ -683,6 +703,8 @@ en: {
     "or closer to the microphone.",
   calibMaxed: "This microphone is very quiet. The gain is at its maximum; raise the " +
     "input volume for this device in your operating system's sound settings as well.",
+  calibHot: "This microphone is very loud even at maximum attenuation. Lower the " +
+    "input volume for this device in your operating system's sound settings.",
   calibSet: "Recording level is set. You do not need the meter to reach any " +
     "particular point — a clean signal matters more than a loud one.",
   sumLocal: "Recordings are held in this browser session only. Use the button below " +
@@ -753,6 +775,11 @@ ko: {
   doneWithdrawnTitle: "시험 중단",
   doneWithdrawnSub: "시험 참여가 중단되었습니다. 지금까지 완료한 응답은 " +
     "저장되었습니다. 참여해 주셔서 감사합니다.",
+  signalTitle: "소리가 녹음되지 않고 있습니다",
+  signalText: "최근 문항에서 마이크 신호가 감지되지 않았습니다. 마이크 연결과 " +
+    "입력 음량을 확인한 뒤 계속해 주세요. 완료된 문항은 그대로 저장됩니다.",
+  signalContinue: "계속하기",
+  signalStop: "중단하기",
   btnZip: "전체 녹음 파일 내려받기",
   btnRetry: "실패한 업로드 다시 시도",
   footer: "본 페이지는 연구 목적으로만 사용됩니다. 시험 중 참가자의 동의하에 " +
@@ -777,6 +804,8 @@ ko: {
     "마이크에 가까이 가십시오.",
   calibMaxed: "마이크 입력이 매우 작습니다. 음량이 최대로 설정되어 있으니, 운영체제의 " +
     "소리 설정에서 이 마이크의 입력 음량도 함께 높여 주십시오.",
+  calibHot: "마이크 입력이 최대 감쇠로도 너무 큽니다. 운영체제의 소리 설정에서 " +
+    "이 마이크의 입력 음량을 낮춰 주세요.",
   calibSet: "녹음 음량이 설정되었습니다. 측정기가 특정 지점에 도달할 필요는 없습니다. " +
     "큰 소리보다 깨끗한 신호가 더 중요합니다.",
   sumLocal: "녹음 파일은 현재 브라우저에만 저장되어 있습니다. 페이지를 닫기 전에 " +
@@ -847,6 +876,7 @@ const S = {
 };
 
 const dbToLin = db => Math.pow(10, db / 20);
+const fmtDb = db => (db > 0 ? "+" : "") + db + " dB";
 const linToDb = v => 20 * Math.log10(Math.max(v, 1e-7));
 
 const $ = id => document.getElementById(id);
@@ -1202,13 +1232,13 @@ function startLevelMeter(fillEl, peakEl, verdictEl){
     if(verdictEl && !S.checkDone){
       if(S.clipCount > 2){
         verdictEl.textContent = "Too loud — clipping. Reduce the gain.";
-        verdictEl.style.color = "var(--rec)";
+        verdictEl.style.color = "var(--sev)";
       }else if(S.peakDb > -25 && S.peakDb < -3){
         verdictEl.textContent = "Level looks good.";
         verdictEl.style.color = "#16a34a";
       }else if(S.peakDb <= -25 && S.peakDb > -90){
         verdictEl.textContent = "Still quiet — speak up, move closer, or raise the gain.";
-        verdictEl.style.color = "var(--warn)";
+        verdictEl.style.color = "var(--mild)";
       }else{
         verdictEl.textContent = "";
       }
@@ -1277,13 +1307,14 @@ async function runMicCheck(){
   let adjustDb = 0, applied = gainBefore;
   if(detected && CFG.allowCalibration){
     adjustDb = CFG.targetPeakDb - speech.peakDb;
-    applied = Math.max(0, Math.min(40, Math.round(gainBefore + adjustDb)));
+    applied = Math.max(-20, Math.min(40, Math.round(gainBefore + adjustDb)));
     setGainDb(applied);
     $("gainSlider").value = applied;
-    $("gainVal").textContent = "+" + applied + " dB";
+    $("gainVal").textContent = fmtDb(applied);
   }
 
   const headroomShort = detected && (gainBefore + adjustDb) > 40;
+  const attenFloor = detected && (gainBefore + adjustDb) < -20;
   const rep = $("snrReport");
   rep.style.display = "block";
   rep.innerHTML = "";
@@ -1298,22 +1329,23 @@ async function runMicCheck(){
   const v = $("levelVerdict");
   if(!detected){
     v.textContent = T("vNoSpeech");
-    v.style.color = "var(--warn)";
+    v.style.color = "var(--mild)";
   }else if(S.clipCount > 2 || speech.peakDb > -1){
     v.textContent = T("vClip");
-    v.style.color = "var(--rec)";
+    v.style.color = "var(--sev)";
   }else if(snr >= 20){
     v.textContent = T("vGood");
     v.style.color = "#16a34a";
   }else if(snr >= 12){
     v.textContent = T("vUsable");
-    v.style.color = "var(--warn)";
+    v.style.color = "var(--mild)";
   }else{
     v.textContent = T("vNoisy");
-    v.style.color = "var(--warn)";
+    v.style.color = "var(--mild)";
   }
 
-  $("calibResult").textContent = headroomShort ? T("calibMaxed") : T("calibSet");
+  $("calibResult").textContent = headroomShort ? T("calibMaxed")
+    : attenFloor ? T("calibHot") : T("calibSet");
 
   S.peakDb = -99;
   S.clipCount = 0;
@@ -1456,6 +1488,12 @@ async function runTrial(itemNo, isPractice, index, total){
 
   $("progFill").style.width = (index / total * 100) + "%";
 
+  // Track consecutive no-signal items (mic died / muted mid-session).
+  if(!isPractice){
+    if(trialPeakDb < -55) S.silentRun = (S.silentRun || 0) + 1;
+    else S.silentRun = 0;
+  }
+
   // A withdrawal mid-recording discards the incomplete item; completed items
   // (1 … k−1) have already been uploaded individually and remain intact.
   if(isPractice || !blob || S.withdrawn) return;
@@ -1487,10 +1525,34 @@ async function runBlock(isPractice){
     if(S.withdrawn) return;
     await runTrial(i, isPractice, i, total);
     if(S.withdrawn) return;
+    // Two consecutive scored items with no signal: pause and warn rather than
+    // letting the participant complete the block silently.
+    if(!isPractice && (S.silentRun || 0) >= 2 && i < total){
+      await signalWarning();
+      if(S.withdrawn) return;
+    }
     if(i < total) await sleep(CFG.interTrialMs);
   }
   setPhase(T("phBlockDone"), "", "", "&#10003;");
   await sleep(800);
+}
+
+/** Pause the block with a no-signal warning; resolves when the participant
+ *  chooses to continue (or after they confirm withdrawal). */
+function signalWarning(){
+  return new Promise(resolve => {
+    $("signalOverlay").style.display = "flex";
+    $("signalContinueBtn").onclick = () => {
+      S.silentRun = 0;
+      $("signalOverlay").style.display = "none";
+      resolve();
+    };
+    $("signalStopBtn").onclick = () => {
+      $("signalOverlay").style.display = "none";
+      resolve();
+      confirmWithdraw();
+    };
+  });
 }
 
 /* ---------- participant withdrawal (Stop button) ---------- */
@@ -1547,8 +1609,9 @@ function renderSummary(){
     const row = document.createElement("div");
     const size = (r.blob.size / 1024).toFixed(0) + " KB";
     const lvl = r.clipped ? "clipped" : (r.peakDb < -30 ? "quiet" : "ok");
+    const lvlCls = lvl === "clipped" ? "bad" : lvl === "quiet" ? "lvl-warn" : "ok";
     row.innerHTML = "<span>" + r.name + "</span><span class='" +
-      (lvl === "ok" ? "ok" : "bad") + "'>" + size + " · peak " +
+      lvlCls + "'>" + size + " · peak " +
       r.peakDb.toFixed(1) + " dB · " + lvl + " · " +
       (r.uploaded ? "uploaded" : "local only") + "</span>";
     list.appendChild(row);
@@ -1733,7 +1796,7 @@ $("grantBtn").onclick = async () => {
     $("micTestBlock").style.display = "block";
     $("grantBtn").style.display = "none";
     $("gainSlider").value = CFG.inputGainDb;
-    $("gainVal").textContent = "+" + CFG.inputGainDb + " dB";
+    $("gainVal").textContent = fmtDb(CFG.inputGainDb);
     startLevelMeter($("levelFill"), $("levelPeak"), $("levelVerdict"));
   }catch(e){
     $("micNote").className = "note warn";
@@ -1746,7 +1809,7 @@ $("grantBtn").onclick = async () => {
 $("gainSlider").addEventListener("input", e => {
   const db = parseInt(e.target.value, 10);
   setGainDb(db);
-  $("gainVal").textContent = "+" + db + " dB";
+  $("gainVal").textContent = fmtDb(db);
   S.peakDb = -99;
   S.clipCount = 0;
 });
