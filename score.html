@@ -96,6 +96,14 @@
   .w-om{color:#db2777; font-weight:700}
   .foot{font-size:11.5px; color:var(--muted); padding:12px 24px;
     border-top:1px solid var(--line); background:#fafafb; font-family:var(--mono)}
+  /* narrow screens: hide the Target column and stack it above Whisper */
+  .tgt-inline{display:none}
+  @media(max-width:900px){
+    body{padding-left:10px; padding-right:10px}
+    .itemtab th:nth-child(3), .itemtab td:nth-child(3){display:none}
+    .tgt-inline{display:block; color:var(--muted); margin-bottom:2px}
+    .itemtab th, .itemtab td{padding:9px 8px}
+  }
 </style>
 </head>
 <body>
@@ -123,7 +131,7 @@
     </div>
     <div class="row">
       <button class="btn-p" id="runBtn" disabled data-i18n="btnRun">전사 및 채점 시작</button>
-      <button class="btn-g" id="resetBtn" data-i18n="btnReset">새로 시작</button>
+      <button class="btn-g" id="resetBtn" data-i18n="btnReset">새 파일 업로드</button>
       <div class="prog"><div id="progFill"></div></div>
     </div>
     <div class="status" id="status"></div>
@@ -212,7 +220,7 @@ en:{
   optSmall:"small (quick check only · lower accuracy)",
   dropIdle:"Drop WAV files here, or click to choose",
   btnRun:"Run transcription and scoring",
-  btnReset:"Start over",
+  btnReset:"Upload new files",
   resTitle:"Results",
   sortItem:"Participant, item order", sortAcc:"Lowest accuracy first", sortConf:"Lowest confidence first",
   thPid:"Participant", thNItems:"Items", thMAcc:"Mean accuracy", thMWer:"Mean WER", thMConf:"Mean confidence",
@@ -229,9 +237,8 @@ en:{
   fmtRun:(k,n,f)=>"Transcribing ("+k+"/"+n+"): "+f,
   fmtRetry:(k,n,f)=>"Retrying ("+k+"/"+n+"): "+f,
   fmtDone:(n,s,m,d)=>"Finished — "+n+" files, "+s+" s ("+m+", "+d+")",
-  stLoad:tag=>"Loading model"+tag+"… downloaded once, then cached in this browser.",
-  fmtDl:(tag,file,pct)=>"Downloading model"+tag+": "+file+" "+pct+"%",
-  fmtTag:(t,max)=>" (retry "+t+"/"+max+")",
+  stLoad:(t,max)=>"Loading model"+(t>1?" (retry "+t+"/"+max+")":"")+"… downloaded once, then cached in this browser.",
+  fmtDl:(t,max,file,pct)=>"Downloading model"+(t>1?" (retry "+t+"/"+max+")":"")+": "+file+" "+pct+"%",
   fmtWait:s=>"Download failed — retrying in "+s+" s. Files already downloaded are kept.",
   stLibRetry:(t,max)=>"Library failed to load — retry "+t+"/"+max+"…",
   errOffline:"The internet connection was lost.",
@@ -249,7 +256,7 @@ ko:{
   optSmall:"small (빠른 동작 확인용 · 정확도 낮음)",
   dropIdle:"여기에 WAV 파일들을 끌어다 놓거나 클릭해서 선택",
   btnRun:"전사 및 채점 시작",
-  btnReset:"새로 시작",
+  btnReset:"새 파일 업로드",
   resTitle:"채점 결과",
   sortItem:"참가자 · 문항 순", sortAcc:"정확도 낮은 순", sortConf:"확신도 낮은 순",
   thPid:"참가자", thNItems:"문항 수", thMAcc:"평균 정확도", thMWer:"평균 WER", thMConf:"평균 확신도",
@@ -266,9 +273,8 @@ ko:{
   fmtRun:(k,n,f)=>"전사 중 ("+k+"/"+n+"): "+f,
   fmtRetry:(k,n,f)=>"재시도 ("+k+"/"+n+"): "+f,
   fmtDone:(n,s,m,d)=>"완료 — "+n+"개 파일, "+s+"초 ("+m+", "+d+")",
-  stLoad:tag=>"모델 로드 중"+tag+"… 첫 사용 시 다운로드 후 브라우저에 캐시됩니다.",
-  fmtDl:(tag,file,pct)=>"모델 다운로드"+tag+": "+file+" "+pct+"%",
-  fmtTag:(t,max)=>" (재시도 "+t+"/"+max+")",
+  stLoad:(t,max)=>"모델 로드 중"+(t>1?" (재시도 "+t+"/"+max+")":"")+"… 첫 사용 시 다운로드 후 브라우저에 캐시됩니다.",
+  fmtDl:(t,max,file,pct)=>"모델 다운로드"+(t>1?" (재시도 "+t+"/"+max+")":"")+": "+file+" "+pct+"%",
   fmtWait:s=>"다운로드 실패 — "+s+"초 후 재시도합니다. 이미 받은 파일은 유지됩니다.",
   stLibRetry:(t,max)=>"라이브러리 로드 실패 — 재시도 "+t+"/"+max+"…",
   errOffline:"인터넷 연결이 끊어졌습니다.",
@@ -279,6 +285,21 @@ ko:{
 }};
 let LANG = (()=>{ try{ return localStorage.getItem("eitScoreLang") || "ko"; }catch(e){ return "ko"; } })();
 const T = k => I18N[LANG][k];
+
+/* dynamic strings are stored as key+args so they can be re-rendered on language switch */
+let STATUS={k:"stPick",a:[]}, DROP={k:"dropIdle",a:[]};
+function setStatus(k,...a){ STATUS={k,a}; paintStatus(); }
+function setStatusRaw(msg){ STATUS={k:"__raw",a:[msg]}; paintStatus(); }
+function paintStatus(){
+  if(STATUS.k==="__raw"){ $("status").textContent=STATUS.a[0]; return; }
+  const v=T(STATUS.k);
+  $("status").textContent = typeof v==="function" ? v(...STATUS.a) : v;
+}
+function setDrop(k,...a){ DROP={k,a}; paintDrop(); }
+function paintDrop(){
+  const v=T(DROP.k);
+  $("dropMsg").textContent = typeof v==="function" ? v(...DROP.a) : v;
+}
 function applyLang(){
   document.documentElement.lang = LANG;
   document.querySelectorAll("[data-i18n]").forEach(el=>{
@@ -287,8 +308,7 @@ function applyLang(){
   });
   $("langEn").classList.toggle("on", LANG==="en");
   $("langKo").classList.toggle("on", LANG==="ko");
-  if(!FILES.length) $("dropMsg").textContent = T("dropIdle");
-  if(!RESULTS.length) $("status").textContent = MODEL ? T("stReadyCached") : T("stPick");
+  paintDrop(); paintStatus();
   render();
 }
 $("langEn").onclick=()=>setLang("en");
@@ -425,7 +445,7 @@ async function loadLib(){
   for(let t=1;t<=MAX_TRIES;t++){
     try{ libCache=await import(urls[(t-1)%urls.length]); return libCache; }
     catch(e){ last=e;
-      $("status").textContent=T("stLibRetry")(t,MAX_TRIES);
+      setStatus("stLibRetry",t,MAX_TRIES);
       if(t<MAX_TRIES) await sleep(Math.min(1000*2**t,8000)); }
   }
   throw new Error(T("errLib")(last&&last.message||last));
@@ -439,11 +459,10 @@ async function loadModel(id){
     ? {encoder_model:"fp16", decoder_model_merged:"q4"} : "q8";
   let last=null;
   for(let t=1;t<=MAX_TRIES;t++){
-    const tag = t===1 ? "" : T("fmtTag")(t,MAX_TRIES);
-    $("status").textContent=T("stLoad")(tag);
+    setStatus("stLoad",t,MAX_TRIES);
     try{
       const cb=p=>{ if(p.status==="progress"&&p.total)
-        $("status").textContent=T("fmtDl")(tag,p.file,Math.round(p.progress)); };
+        setStatus("fmtDl",t,MAX_TRIES,p.file,Math.round(p.progress)); };
       PROC = await AutoProcessor.from_pretrained(id,{progress_callback:cb});
       TOK  = await AutoTokenizer.from_pretrained(id,{progress_callback:cb});
       MODEL= await WhisperForConditionalGeneration.from_pretrained(id,
@@ -456,7 +475,7 @@ async function loadModel(id){
       if(t<MAX_TRIES){
         $("dlWarn").classList.remove("hidden");
         for(let s=Math.min(2**t,15);s>0;s--){
-          $("status").textContent=T("fmtWait")(s);
+          setStatus("fmtWait",s);
           await sleep(1000);
         }
       }
@@ -523,11 +542,11 @@ $("fileIn").onchange=e=>takeFiles(e.target.files);
 function takeFiles(list){
   FILES=[...list].filter(f=>/\.(wav|mp3|m4a|webm|ogg|flac)$/i.test(f.name));
   FILES.sort((a,b)=>a.name.localeCompare(b.name));
-  $("dropMsg").textContent = FILES.length
-    ? T("fmtPicked")(FILES.length, FILES.map(f=>f.name).slice(0,4).join(", "), FILES.length>4)
-    : T("dropIdle");
+  if(FILES.length) setDrop("fmtPicked", FILES.length,
+        FILES.map(f=>f.name).slice(0,4).join(", "), FILES.length>4);
+  else setDrop("dropIdle");
   $("runBtn").disabled=!FILES.length;
-  $("status").textContent = FILES.length ? T("stReady") : T("stNoAudio");
+  setStatus(FILES.length ? "stReady" : "stNoAudio");
 }
 
 $("runBtn").onclick=async()=>{
@@ -538,7 +557,7 @@ $("runBtn").onclick=async()=>{
     await loadModel($("modelSel").value);
     for(let k=0;k<FILES.length;k++){
       const f=FILES[k];
-      $("status").textContent=T("fmtRun")(k+1,FILES.length,f.name);
+      setStatus("fmtRun",k+1,FILES.length,f.name);
       $("progFill").style.width=(k/FILES.length*100)+"%";
       const m=f.name.match(FNAME_RE);
       const pid=m?m[1]:"?", item=m?parseInt(m[2],10):null;
@@ -549,7 +568,7 @@ $("runBtn").onclick=async()=>{
           r=await transcribe(data); err=null; break;
         }catch(e){
           err=String(e&&e.message||e);
-          if(t<2){ $("status").textContent=T("fmtRetry")(k+1,FILES.length,f.name); await sleep(800); }
+          if(t<2){ setStatus("fmtRetry",k+1,FILES.length,f.name); await sleep(800); }
         }
       }
       const target=item?TARGETS[item]||"":"";
@@ -558,11 +577,10 @@ $("runBtn").onclick=async()=>{
       render();
     }
     $("progFill").style.width="100%";
-    $("status").textContent=T("fmtDone")(FILES.length,
-      ((performance.now()-t0)/1000).toFixed(1), loadedModel.split("/").pop(),
-      hasGPU?"WebGPU":"WASM");
+    setStatus("fmtDone", FILES.length, ((performance.now()-t0)/1000).toFixed(1),
+      loadedModel.split("/").pop(), hasGPU?"WebGPU":"WASM");
     if(!confAvailable) $("confWarn").classList.remove("hidden");
-  }catch(e){ $("status").textContent=T("errPrefix")+(e&&e.message||e); }
+  }catch(e){ setStatusRaw(T("errPrefix")+(e&&e.message||e)); }
   $("runBtn").disabled=false;
 };
 
@@ -576,8 +594,8 @@ $("resetBtn").onclick=()=>{
   $("confWarn").classList.add("hidden");
   $("progFill").style.width="0%";
   $("runBtn").disabled=true;
-  $("dropMsg").textContent=T("dropIdle");
-  $("status").textContent = MODEL ? T("stReadyCached") : T("stPick");
+  setDrop("dropIdle");
+  setStatus(MODEL ? "stReadyCached" : "stPick");
   window.scrollTo({top:0, behavior:"smooth"});
 };
 
@@ -629,10 +647,9 @@ function render(){
     return "<tr>"+
       "<td class='c-pid'>"+esc(r.pid)+"</td>"+
       "<td class='c-it'>"+(r.item?String(r.item).padStart(2,"0"):"—")+"</td>"+
-      (r.err
-        ? "<td colspan='2'><span class='errcell'>"+esc(r.err)+"</span></td>"
-        : "<td class='c-tgt'>"+esc(r.sc?r.sc.gt:"")+"</td>"+
-          "<td class='c-hyp'>"+diffHtml(r.sc,r.text)+"</td>")+
+      "<td class='c-tgt'>"+esc(r.sc?r.sc.gt:"")+"</td>"+
+      "<td class='c-hyp'><span class='tgt-inline'>"+esc(r.sc?r.sc.gt:"")+"</span>"+
+        (r.err ? "<span class='errcell'>"+esc(r.err)+"</span>" : diffHtml(r.sc,r.text))+"</td>"+
       "<td class='c-n'><span class='acc"+(acc!=null&&acc<50?" low":"")+"'>"+
         (acc==null?"—":acc.toFixed(1)+"%")+"</span></td>"+
       "<td class='c-n'><span class='pill "+pill+"'>"+
