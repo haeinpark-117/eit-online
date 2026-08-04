@@ -102,6 +102,9 @@
   .sitem.now .dot{background:var(--accent); border-color:var(--accent); color:#fff}
   .mic-content h3{font-size:17px; margin:0 0 6px}
   .mic-content .hint{margin-bottom:18px}
+  .icon-btn{display:inline-flex; align-items:center; gap:8px}
+  .dash-btn{color:var(--accent); border-color:#c7d2fe}
+  .dash-btn:hover{background:var(--accent-soft)}
   .note-ok{display:inline-flex; align-items:center; gap:8px; font-size:13px;
     color:var(--accent); background:var(--accent-soft); border-radius:999px;
     padding:6px 14px; font-weight:600}
@@ -481,9 +484,13 @@
     <div class="row">
       <button class="btn-primary" id="zipBtn" data-i18n="btnZip">Download all recordings</button>
       <button class="btn-ghost" id="retryBtn" style="display:none" data-i18n="btnRetry">Retry failed uploads</button>
-      <button class="btn-ghost" id="restartBtn" style="margin-left:auto; display:inline-flex; align-items:center; gap:8px">
+      <button class="btn-ghost icon-btn" id="restartBtn" style="margin-left:auto">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span data-i18n="btnRestart">Back to start</span>
+      </button>
+      <button class="btn-ghost icon-btn dash-btn" id="dashBtn" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span data-i18n="btnDashboard">Results (researcher)</span>
       </button>
     </div>
     <div class="log" id="doneLog"></div>
@@ -713,7 +720,9 @@ const DEFAULTS = {
   targetPeakDb: -9,         // gain calibration aims to put speech peaks here
   beepFreqHz: 1000,
   beepMs: 250,              // matches the ~0.25 s ring tone in the Wu et al. (2022) recordings
-  interTrialMs: 700
+  interTrialMs: 700,
+  // Researcher dashboard (password-gated). Blank => hide the link on the final screen.
+  dashboardUrl: "https://script.google.com/a/macros/khu.ac.kr/s/AKfycbyTKEFQDswZ66vlOl7TPo1mvN5rJcgfrc4mO-7Ao_3eLkIzC3gtv-s68_7QxFMM9ysg/exec"
 };
 let CFG = loadConfig();
 
@@ -780,6 +789,7 @@ en: {
   mainChipPre: "",
   mainChipPost: " Korean practice sentences complete",
   btnRestart: "Back to start",
+  btnDashboard: "Results (researcher)",
   practiceCountPre: "You will begin with",
   practiceCountPost: " practice sentences in Korean. Listen to each sentence; when " +
     "you hear the beep, repeat the sentence aloud.",
@@ -905,6 +915,7 @@ ko: {
   mainChipPre: "한국어 연습문제 ",
   mainChipPost: "개 완료",
   btnRestart: "처음 화면으로",
+  btnDashboard: "결과 보기 (연구자)",
   practiceCountPre: "지금부터 한국어 문장",
   practiceCountPost: "개를 듣게 됩니다. 각 문장이 끝나고 삐소리가 울리면, " +
     "들었던 문장을 소리 내어 따라 말해 보세요.",
@@ -1764,6 +1775,7 @@ async function finish(){
 function renderSummary(){
   const ok = S.recordings.filter(r => r.uploaded).length;
   const bad = S.recordings.length - ok;
+  $("dashBtn").style.display = CFG.dashboardUrl ? "inline-flex" : "none";
   $("uploadSummary").innerHTML = CFG.uploadUrl
     ? "<p>" + T("fmtUploaded")(ok, S.recordings.length, bad) + "</p>"
     : "<p>" + T("sumLocal") + "</p>";
@@ -2060,6 +2072,7 @@ $("stopConfirmBtn").onclick = confirmWithdraw;
 
 $("zipBtn").onclick = downloadAll;
 $("restartBtn").onclick = () => location.reload();
+$("dashBtn").onclick = () => window.open(CFG.dashboardUrl, "_blank", "noopener");
 $("retryBtn").onclick = async () => {
   $("retryBtn").disabled = true;
   for(const r of S.recordings.filter(r => !r.uploaded)) await upload(r);
