@@ -138,9 +138,9 @@
   .warn{background:#faf5e6; border-color:#e6d9b8; color:#6b5518}
   .btn-quit{background:transparent; color:var(--muted); border:none;
     font-size:13px; font-weight:400; text-decoration:underline; padding:4px 8px}
-  .btn-quit:hover{color:var(--rec)}
-  .btn-danger{background:#fff; color:var(--rec); border-color:var(--rec)}
-  .btn-danger:hover{background:#f9eded}
+  .btn-quit:hover{color:var(--pink)}
+  .btn-danger{background:#fff; color:var(--pink); border-color:var(--pink)}
+  .btn-danger:hover{background:var(--pink-soft)}
   .overlay{position:fixed; inset:0; z-index:50; background:rgba(16,32,52,.55);
     display:flex; align-items:center; justify-content:center; padding:24px}
   .overlay-panel{background:#fff; border-radius:12px; max-width:480px; width:100%;
@@ -390,14 +390,14 @@
 <section class="screen" id="screen-practice-intro">
   <div class="panel">
     <h2 data-i18n="practiceTitle">Practice</h2>
-    <p><span data-i18n="practiceCountPre">You will begin with</span>
-       <span id="practiceCount">3</span><span data-i18n="practiceCountPost"> practice
-       sentences in Korean. Listen to each sentence; when you hear the beep, repeat
-       the sentence aloud.</span></p>
+    <p class="sub" style="margin-bottom:18px">
+      <span class="note-ok"><span data-i18n="practiceChipPre"></span><b id="practiceCount">3</b><span data-i18n="practiceChipPost"> Korean sentences · not scored</span></span>
+    </p>
+    <p data-i18n="practiceHow">After each sentence, when you hear the beep, repeat the
+       sentence aloud.</p>
     <div class="note" data-i18n="practiceKey" data-i18n-html><strong>Remember:</strong>
        do not begin repeating until you hear the beep, and repeat as much of the
        sentence as you can, even partially.</div>
-    <p data-i18n="practiceNotScored">Practice sentences are not scored.</p>
     <div class="row"><button class="btn-primary" id="startPracticeBtn" data-i18n="btnStartPractice">Start practice</button></div>
   </div>
 </section>
@@ -405,7 +405,9 @@
 <section class="screen" id="screen-main-intro">
   <div class="panel">
     <h2 data-i18n="mainTitle">Practice complete</h2>
-    <p data-i18n="mainDonePara">The Korean practice sentences are now finished.</p>
+    <p class="sub" style="margin-bottom:18px">
+      <span class="note-ok">&#10003;&nbsp;<span data-i18n="mainChipPre"></span><b id="mainPracCount">3</b><span data-i18n="mainChipPost"> Korean practice sentences complete</span></span>
+    </p>
     <p><span data-i18n="mainCountPre">Next, you will hear</span>
        <span id="mainCount">30</span><span data-i18n="mainCountPost"> English sentences.
        The procedure is the same: after each sentence, when you hear the beep, repeat
@@ -479,6 +481,10 @@
     <div class="row">
       <button class="btn-primary" id="zipBtn" data-i18n="btnZip">Download all recordings</button>
       <button class="btn-ghost" id="retryBtn" style="display:none" data-i18n="btnRetry">Retry failed uploads</button>
+      <button class="btn-ghost" id="restartBtn" style="margin-left:auto; display:inline-flex; align-items:center; gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span data-i18n="btnRestart">Back to start</span>
+      </button>
     </div>
     <div class="log" id="doneLog"></div>
   </div>
@@ -768,6 +774,12 @@ en: {
     "through your headphones, not through your computer speakers.",
   btnTestTone: "Play test tone",
   practiceTitle: "Practice",
+  practiceChipPre: "",
+  practiceChipPost: " Korean sentences · not scored",
+  practiceHow: "After each sentence, when you hear the beep, repeat the sentence aloud.",
+  mainChipPre: "",
+  mainChipPost: " Korean practice sentences complete",
+  btnRestart: "Back to start",
   practiceCountPre: "You will begin with",
   practiceCountPost: " practice sentences in Korean. Listen to each sentence; when " +
     "you hear the beep, repeat the sentence aloud.",
@@ -887,6 +899,12 @@ ko: {
     "아니라 헤드폰에서 들리는지 확인하십시오.",
   btnTestTone: "테스트 음 재생",
   practiceTitle: "연습문제",
+  practiceChipPre: "한국어 문장 ",
+  practiceChipPost: "개 · 채점되지 않습니다",
+  practiceHow: "각 문장이 끝나고 삐소리가 울리면, 들었던 문장을 소리 내어 따라 말해 보세요.",
+  mainChipPre: "한국어 연습문제 ",
+  mainChipPost: "개 완료",
+  btnRestart: "처음 화면으로",
   practiceCountPre: "지금부터 한국어 문장",
   practiceCountPost: "개를 듣게 됩니다. 각 문장이 끝나고 삐소리가 울리면, " +
     "들었던 문장을 소리 내어 따라 말해 보세요.",
@@ -1383,7 +1401,7 @@ function startLevelMeter(fillEl, peakEl, verdictEl){
         verdictEl.style.color = "var(--sev)";
       }else if(S.peakDb > -25 && S.peakDb < -3){
         verdictEl.textContent = "Level looks good.";
-        verdictEl.style.color = "#16a34a";
+        verdictEl.style.color = "var(--pink)";
       }else if(S.peakDb <= -25 && S.peakDb > -90){
         verdictEl.textContent = "Still quiet — speak up, move closer, or raise the gain.";
         verdictEl.style.color = "var(--mild)";
@@ -1483,7 +1501,7 @@ async function runMicCheck(){
     v.style.color = "var(--sev)";
   }else if(snr >= 20){
     v.textContent = T("vGood");
-    v.style.color = "#16a34a";
+    v.style.color = "var(--pink)";
   }else if(snr >= 12){
     v.textContent = T("vUsable");
     v.style.color = "var(--mild)";
@@ -1919,6 +1937,7 @@ function previewWindows(){
    ============================================================ */
 function applyStaticLabels(){
   $("practiceCount").textContent = CFG.practiceItems;
+  $("mainPracCount").textContent = CFG.practiceItems;
   $("mainCount").textContent = CFG.totalItems;
   $("demoBanner").style.display = CFG.uploadUrl ? "none" : "block";
 }
@@ -2040,6 +2059,7 @@ $("stopResumeBtn").onclick = () => { $("stopOverlay").style.display = "none"; };
 $("stopConfirmBtn").onclick = confirmWithdraw;
 
 $("zipBtn").onclick = downloadAll;
+$("restartBtn").onclick = () => location.reload();
 $("retryBtn").onclick = async () => {
   $("retryBtn").disabled = true;
   for(const r of S.recordings.filter(r => !r.uploaded)) await upload(r);
