@@ -6,27 +6,28 @@
 <title>EIT Scoring Tool — browser Whisper</title>
 <style>
   :root{
-    --bg:#fafafa; --panel:#fff; --ink:#18181b; --muted:#71717a; --line:#e4e4e7;
+    --bg:#f2f2f4; --panel:#fff; --ink:#17171c; --muted:#6b6b76; --line:#e3e3e8;
     --accent:#4f46e5; --accent-dark:#4338ca; --accent-soft:#eef2ff;
-    --mild:#0e7490; --mild-bg:#ecfeff; --sev:#be185d; --sev-bg:#fdf2f8;
-    --pink:#ff1493;
+    --pink:#ff1493; --pink-soft:#fff0f8; --sev:#be185d;
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
   body{margin:0; background:var(--bg); color:var(--ink);
     font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
     "Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-    padding:70px 18px 60px; display:flex; flex-direction:column; align-items:center}
-  .hd{position:fixed; top:0; left:0; right:0; z-index:10; height:52px;
-    background:rgba(250,250,250,.94); border-bottom:1px solid var(--line);
-    display:flex; align-items:center; justify-content:space-between; padding:0 20px}
+    padding:66px 18px 60px; display:flex; flex-direction:column; align-items:center}
+  .hd{position:fixed; top:0; left:0; right:0; z-index:20; height:50px;
+    background:rgba(242,242,244,.95); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 22px}
   .hd .t{font-weight:700; font-size:15px}
   .hd .t span{font-weight:400; color:var(--muted); font-size:11px; margin-left:9px;
     text-transform:uppercase; letter-spacing:.08em}
-  .stage{width:100%; max-width:880px}
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px;
-    padding:24px 28px; margin-bottom:16px; box-shadow:0 1px 2px rgba(0,0,0,.03)}
-  h1{font-size:20px; margin:0 0 4px; letter-spacing:-.02em}
+  .hd .badge{font-family:var(--mono); font-size:11.5px; color:var(--muted)}
+  .stage{width:100%; max-width:1060px}
+  .panel{background:var(--panel); border:1px solid #dcdce2; border-radius:12px;
+    margin-bottom:16px; overflow:hidden}
+  .pad{padding:22px 26px}
+  h1{font-size:19px; margin:0 0 4px; letter-spacing:-.02em}
   .meta{font-size:12.5px; color:var(--muted)}
   button{font:inherit; font-weight:600; cursor:pointer; border-radius:8px;
     padding:10px 20px; border:1px solid transparent}
@@ -35,56 +36,68 @@
   .btn-p:hover:not(:disabled){background:var(--accent-dark)}
   .btn-g{background:#fff; color:#3f3f46; border-color:#d4d4d8}
   .btn-g:hover:not(:disabled){background:var(--accent-soft)}
-  select{font:inherit; padding:8px 12px; border:1px solid #d4d4d8; border-radius:8px; background:#fff}
-  .drop{border:2px dashed #c7c7d1; border-radius:12px; padding:34px 20px; text-align:center;
-    color:var(--muted); font-size:14px; margin:16px 0; transition:all .15s; cursor:pointer}
+  .btn-s{font-size:12.5px; padding:6px 13px; border-radius:6px}
+  select{font:inherit; padding:7px 11px; border:1px solid #d4d4d8; border-radius:7px;
+    background:#fff; font-size:13.5px}
+  .drop{border:2px dashed #c9c9d2; border-radius:10px; padding:30px 20px; text-align:center;
+    color:var(--muted); font-size:14px; margin:15px 0; transition:all .15s; cursor:pointer}
   .drop.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
-  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px}
-  .prog{height:7px; background:var(--line); border-radius:4px; overflow:hidden; flex:1}
+  .row{display:flex; gap:11px; align-items:center; flex-wrap:wrap; margin-top:12px}
+  .prog{height:6px; background:var(--line); border-radius:3px; overflow:hidden; flex:1; min-width:120px}
   .prog div{height:100%; background:var(--accent); width:0%; transition:width .2s}
-  .status{font-size:13px; color:var(--muted); min-height:20px; margin-top:8px; font-family:var(--mono)}
-  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0 4px}
-  .tile{border:1px solid var(--line); border-radius:10px; padding:10px 12px}
-  .tile .v{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums}
-  .tile.hero .v{color:var(--accent)}
-  .tile .l{font-size:10.5px; color:var(--muted); text-transform:uppercase;
-    letter-spacing:.05em; margin-top:1px}
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
-    padding:16px 20px 12px; margin-bottom:11px}
-  .card.sevb{border-left:4px solid #ec4899}
-  .ctop{display:flex; justify-content:space-between; align-items:baseline}
-  .ctop .it{font-weight:700; font-size:14.5px}
-  .ctop .it small{color:var(--muted); font-weight:400; margin-left:7px}
-  .acc{font-size:18px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums}
-  .acc.low{color:var(--sev)}
-  .scoreline{display:flex; align-items:center; gap:12px; margin:9px 0 10px}
-  .play{width:32px; height:32px; border-radius:50%; border:1px solid var(--accent);
-    background:#fff; color:var(--accent); font-size:12px; flex:none; padding:0}
-  .bar{flex:1; height:7px; background:var(--line); border-radius:4px; overflow:hidden}
-  .bar div{height:100%; background:var(--accent)}
-  .nums{font-family:var(--mono); font-size:12px; color:var(--muted); flex:none}
-  .gtr{font-family:var(--mono); font-size:13px; line-height:1.85;
-    background:#f8fafc; border:1px solid var(--line); border-radius:6px;
-    padding:7px 11px; overflow-x:auto; white-space:nowrap}
-  .gtr .tag{display:inline-block; width:28px; color:var(--muted); font-size:10.5px}
-  .w-sub{background:#cffafe; border-radius:3px; padding:0 2px}
-  .w-ins{background:#fbcfe8; border-radius:3px; padding:0 2px}
-  .w-om{color:#db2777; font-weight:700}
-  .note{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.7}
-  .hidden{display:none}
-  .warnbox{background:var(--sev-bg); border:1px solid #fbcfe8; color:var(--sev);
+  .status{font-size:13px; color:var(--muted); min-height:20px; margin-top:9px; font-family:var(--mono)}
+  .warnbox{background:var(--pink-soft); border:1px solid #fbcfe8; color:var(--sev);
     border-radius:8px; padding:10px 14px; font-size:13px; margin-top:12px}
-  @media(max-width:680px){ .tiles{grid-template-columns:repeat(2,1fr)} }
+  .infobox{background:var(--accent-soft); border:1px solid #c7d2fe; color:#3730a3;
+    border-radius:8px; padding:10px 14px; font-size:12.5px; margin-top:12px}
+  .hidden{display:none}
+
+  /* ---------- results table ---------- */
+  .top{display:flex; align-items:baseline; gap:20px; padding:18px 24px 15px;
+    border-bottom:2px solid var(--ink); flex-wrap:wrap}
+  .top h2{font-size:17px; margin:0; letter-spacing:-.01em}
+  .top .s{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .top .s b{color:var(--ink); font-size:15px}
+  .top .right{margin-left:auto; display:flex; gap:8px; align-items:center}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th{text-align:left; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; padding:9px 12px; border-bottom:1px solid var(--line);
+    background:#fafafb; white-space:nowrap; position:sticky; top:50px; z-index:5}
+  td{padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  tr:hover td{background:#fbfbfd}
+  .c-it{font-family:var(--mono); font-size:12px; color:var(--muted); white-space:nowrap}
+  .c-tgt{font-family:var(--mono); font-size:12.5px; color:var(--muted); display:block; margin-bottom:3px}
+  .c-hyp{font-family:var(--mono); font-size:13px; display:block}
+  .c-lab{display:inline-block; width:15px; color:#a8a8b3; font-size:10px}
+  .c-n{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap}
+  .acc{font-size:14.5px; font-weight:700; color:var(--accent)}
+  .acc.low{color:var(--sev)}
+  .pill{display:inline-block; min-width:50px; text-align:center; border-radius:4px;
+    padding:2px 7px; font-weight:600; font-size:12.5px}
+  .p0{background:#eef2ff; color:#4338ca}
+  .p1{background:#f4f4f5; color:#52525b}
+  .p2{background:var(--pink-soft); color:var(--sev)}
+  .conf{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right;
+    color:var(--muted); white-space:nowrap; font-size:12px}
+  .conf b{color:var(--ink); font-size:13.5px; font-weight:600}
+  .mini{background:none; border:1px solid var(--line); border-radius:5px; width:26px;
+    height:26px; cursor:pointer; color:var(--accent); font-size:11px; padding:0}
+  .errcell{color:var(--sev); font-size:12.5px}
+  .w-sub{background:#cffafe; border-radius:3px; padding:0 3px}
+  .w-ins{background:#fbcfe8; border-radius:3px; padding:0 3px}
+  .w-om{color:#db2777; font-weight:700}
+  .foot{font-size:11.5px; color:var(--muted); padding:12px 24px; line-height:1.7;
+    border-top:1px solid var(--line); background:#fafafb}
 </style>
 </head>
 <body>
 <div class="hd">
   <div class="t">English Elicited Imitation Task<span>Scoring tool · runs in your browser</span></div>
-  <div class="meta" id="gpuBadge"></div>
+  <div class="badge" id="gpuBadge"></div>
 </div>
 <div class="stage">
 
-  <div class="panel">
+  <div class="panel"><div class="pad">
     <h1>자동 전사 · 채점</h1>
     <p class="meta">참가자에게 받은 녹음 파일(<span style="font-family:var(--mono)">참가자ID_item번호.wav</span>)을
       올리면 Whisper가 <b>이 브라우저 안에서</b> 전사하고 EIT A 목표 문장과 대조해 채점합니다.
@@ -101,8 +114,6 @@
     </div>
     <div class="row">
       <button class="btn-p" id="runBtn" disabled>전사 및 채점 시작</button>
-      <button class="btn-g" id="csvBtn" disabled>CSV 내보내기</button>
-      <button class="btn-g" id="jsonBtn" disabled>결과 JSON 내보내기</button>
       <div class="prog"><div id="progFill"></div></div>
     </div>
     <div class="status" id="status">파일을 선택하세요.</div>
@@ -111,26 +122,43 @@
     <div class="warnbox hidden" id="dlWarn">모델 다운로드 중 네트워크 오류가 발생해 자동으로
       재시도하고 있습니다. 이미 받은 파일은 브라우저에 남아 있으므로 처음부터 다시 받지 않습니다.
       계속 실패하면 잠시 후 [전사 및 채점 시작]을 다시 눌러 주세요.</div>
-  </div>
+    <div class="infobox hidden" id="confWarn">이 환경에서는 Whisper의 토큰 확률을 읽을 수 없어
+      확신도가 표시되지 않습니다. 전사와 채점은 정상적으로 수행됩니다.</div>
+  </div></div>
 
-  <div class="panel hidden" id="sumPanel">
-    <h1 id="sumTitle">결과</h1>
-    <div class="meta" id="sumMeta"></div>
-    <div class="tiles">
-      <div class="tile hero"><div class="v" id="tAcc">—</div><div class="l">Mean accuracy</div></div>
-      <div class="tile"><div class="v" id="tWer">—</div><div class="l">Mean WER</div></div>
-      <div class="tile"><div class="v" id="tCer">—</div><div class="l">Mean CER</div></div>
-      <div class="tile"><div class="v" id="tN">—</div><div class="l">Items scored</div></div>
+  <div class="panel hidden" id="resPanel">
+    <div class="top">
+      <h2 id="pTitle"></h2>
+      <span class="s" id="pStats"></span>
+      <span class="right">
+        <select id="sortSel">
+          <option value="item">문항 순</option>
+          <option value="acc">정확도 낮은 순</option>
+          <option value="conf">확신도 낮은 순</option>
+        </select>
+        <button class="btn-g btn-s" id="csvBtn">CSV</button>
+        <button class="btn-g btn-s" id="jsonBtn">JSON</button>
+      </span>
     </div>
+    <table>
+      <thead><tr>
+        <th style="width:74px">문항</th>
+        <th>Target · Whisper</th>
+        <th style="width:74px; text-align:right">정확도</th>
+        <th style="width:70px; text-align:right">WER</th>
+        <th style="width:96px; text-align:right">Confidence</th>
+        <th style="width:44px"></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="foot" id="foot"></div>
   </div>
-
-  <div id="cards"></div>
-  <div class="note" style="text-align:center">채점: 소문자화 + 구두점 제거(normalizer v1) 후
-    단어 단위 최소 편집 정렬 · WER = (대치+누락+삽입)/기준 단어 수, 1.0에서 절단 ·
-    Colab 파이프라인(faster-whisper large-v3, beam 5)과 모델·디코딩이 달라 전사가 미세하게 다를 수 있습니다.</div>
 </div>
 
 <script type="module">
+/* ============================================================
+   EIT A target sentences (Ortega et al., 2002)
+   ============================================================ */
 const TARGETS = {
  1:"I have to get a haircut.", 2:"The red book is on the table.",
  3:"The streets in this city are wide.", 4:"He takes a shower every morning.",
@@ -152,11 +180,69 @@ const SYL=[7,8,8,9,10,10,11,12,12,12,13,13,14,14,14,15,15,15,15,16,16,16,16,16,1
 const $=id=>document.getElementById(id);
 const FNAME_RE=/^(.+?)_item(\d{1,2})(?:_v(\d+))?\.[A-Za-z0-9]+$/;
 
-/* ---------- normalizer v1 (identical to the Colab pipeline) ---------- */
-function normalize(s){
-  return String(s).toLowerCase().replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim();
+/* ============================================================
+   NORMALIZER v2  — applied identically to target and hypothesis
+     · digits spelled out            3 -> three, 11:30 -> eleven thirty
+     · contractions expanded         i'm -> i am, can't -> cannot
+     · possessives preserved         neighbor's -> neighbor's
+     · lexical variants unified      town house(s) -> townhouse(s)
+   ============================================================ */
+const ONES=["zero","one","two","three","four","five","six","seven","eight","nine","ten",
+"eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+const TENS=["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+function n2w(n){
+  n=parseInt(n,10);
+  if(n<20) return ONES[n];
+  if(n<100) return TENS[Math.floor(n/10)]+(n%10?" "+ONES[n%10]:"");
+  if(n<1000) return ONES[Math.floor(n/100)]+" hundred"+(n%100?" "+n2w(n%100):"");
+  if(n<1000000) return n2w(Math.floor(n/1000))+" thousand"+(n%1000?" "+n2w(n%1000):"");
+  return n2w(Math.floor(n/1000000))+" million"+(n%1000000?" "+n2w(n%1000000):"");
 }
-/* ---------- minimum-edit alignment (word level) -> ops like jiwer ---------- */
+const ORD={"1st":"first","2nd":"second","3rd":"third","4th":"fourth","5th":"fifth",
+"6th":"sixth","7th":"seventh","8th":"eighth","9th":"ninth","10th":"tenth",
+"11th":"eleventh","12th":"twelfth","13th":"thirteenth","20th":"twentieth","21st":"twenty first"};
+const CONTR={
+ "i'm":"i am","you're":"you are","we're":"we are","they're":"they are",
+ "i've":"i have","you've":"you have","we've":"we have","they've":"they have",
+ "could've":"could have","would've":"would have","should've":"should have",
+ "might've":"might have","must've":"must have",
+ "i'll":"i will","you'll":"you will","he'll":"he will","she'll":"she will",
+ "it'll":"it will","we'll":"we will","they'll":"they will","that'll":"that will",
+ "there'll":"there will","who'll":"who will",
+ "i'd":"i would","you'd":"you would","he'd":"he would","she'd":"she would",
+ "we'd":"we would","they'd":"they would","that'd":"that would",
+ "it's":"it is","he's":"he is","she's":"she is","that's":"that is",
+ "there's":"there is","here's":"here is","what's":"what is","who's":"who is",
+ "where's":"where is","when's":"when is","how's":"how is","let's":"let us",
+ "don't":"do not","doesn't":"does not","didn't":"did not",
+ "isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not",
+ "hasn't":"has not","haven't":"have not","hadn't":"had not",
+ "won't":"will not","wouldn't":"would not","can't":"cannot","couldn't":"could not",
+ "shouldn't":"should not","mustn't":"must not","needn't":"need not",
+ "ain't":"is not","shan't":"shall not"
+};
+/* one-word / two-word variants unified to a single form */
+const VARIANTS=[[/\btown\s+house(s?)\b/g,"townhouse$1"]];
+
+function normalize(s){
+  s=String(s).toLowerCase().replace(/[‘’]/g,"'");
+  s=s.replace(/\b(\d{1,2}):(\d{2})\b/g,(m,h,mn)=>{
+    h=parseInt(h,10); mn=parseInt(mn,10);
+    if(mn===0) return n2w(h)+" o'clock";
+    if(mn<10)  return n2w(h)+" oh "+n2w(mn);
+    return n2w(h)+" "+n2w(mn);
+  });
+  s=s.replace(/(\d),(\d{3})\b/g,"$1$2");
+  s=s.replace(/\b(\d+)(st|nd|rd|th)\b/g,m=>ORD[m]||n2w(m.replace(/\D/g,"")));
+  s=s.replace(/(\d+)\s*%/g,(m,d)=>n2w(d)+" percent");
+  s=s.replace(/\b\d+\b/g,m=>n2w(m));
+  s=s.replace(/[a-z]+'[a-z]+/g,m=>CONTR[m]||m);   /* possessives untouched */
+  s=s.replace(/[^a-z0-9' ]/g," ");
+  VARIANTS.forEach(([re,to])=>{ s=s.replace(re,to); });
+  return s.replace(/\s+/g," ").trim();
+}
+
+/* ---------- word-level minimum-edit alignment ---------- */
 function align(refW,hypW){
   const n=refW.length,m=hypW.length;
   const D=Array.from({length:n+1},()=>new Array(m+1).fill(0));
@@ -183,30 +269,16 @@ function align(refW,hypW){
   }
   return {ops,S,D:Dl,I};
 }
-function charDist(a,b){
-  const n=a.length,m=b.length;
-  let prev=new Array(m+1); for(let j=0;j<=m;j++)prev[j]=j;
-  for(let i=1;i<=n;i++){
-    const cur=[i];
-    for(let j=1;j<=m;j++)
-      cur[j]=Math.min(prev[j-1]+(a[i-1]===b[j-1]?0:1), prev[j]+1, cur[j-1]+1);
-    prev=cur;
-  }
-  return prev[m];
-}
 function scorePair(target,hyp){
   const gt=normalize(target), tr=normalize(hyp);
   const refW=gt?gt.split(" "):[];
-  if(!tr) return {wer:1,cer:1,acc:0,ops:[],gt,tr};
+  if(!tr) return {wer:1,acc:0,ops:[],gt,tr};
   const {ops,S,D,I}=align(refW, tr.split(" "));
   const wer=refW.length?Math.min(1,(S+D+I)/refW.length):1;
-  const cer=gt.length?Math.min(1,charDist(gt,tr)/gt.length):1;
-  return {wer:+wer.toFixed(4), cer:+cer.toFixed(4), acc:+((1-wer)*100).toFixed(1), ops, gt, tr};
+  return {wer:+wer.toFixed(4), acc:+((1-wer)*100).toFixed(1), ops, gt, tr};
 }
 
-/* ---------- audio decode to 16 kHz mono ----------
-   One shared AudioContext is reused for every file: browsers cap the number
-   of live AudioContexts, so creating one per file breaks on long batches. */
+/* ---------- audio decode to 16 kHz mono (one shared context) ---------- */
 let DEC_CTX=null;
 async function decodeTo16k(file){
   const buf=await file.arrayBuffer();
@@ -218,12 +290,113 @@ async function decodeTo16k(file){
   return {data:out.getChannelData(0), dur:audio.duration};
 }
 
-/* ---------- state ---------- */
-let FILES=[], RESULTS=[], transcriber=null, loadedModel=null;
+/* ============================================================
+   model loading (with retry) + confidence-aware transcription
+   ============================================================ */
+const MAX_TRIES=5;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const hasGPU=!!navigator.gpu;
 $("gpuBadge").textContent = hasGPU ? "WebGPU ✓" : "CPU (WASM)";
 if(!hasGPU) $("wgpuWarn").classList.remove("hidden");
 
+let libCache=null, MODEL=null, PROC=null, TOK=null, loadedModel=null, confAvailable=true;
+
+async function loadLib(){
+  if(libCache) return libCache;
+  const urls=["https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0",
+              "https://unpkg.com/@huggingface/transformers@3.4.0"];
+  let last=null;
+  for(let t=1;t<=MAX_TRIES;t++){
+    try{ libCache=await import(urls[(t-1)%urls.length]); return libCache; }
+    catch(e){ last=e;
+      $("status").textContent="라이브러리 로드 실패 — 재시도 "+t+"/"+MAX_TRIES+"…";
+      if(t<MAX_TRIES) await sleep(Math.min(1000*2**t,8000)); }
+  }
+  throw new Error("Whisper 라이브러리를 불러오지 못했습니다: "+(last&&last.message||last));
+}
+
+async function loadModel(id){
+  if(MODEL && loadedModel===id) return;
+  const lib=await loadLib();
+  const {AutoProcessor, AutoTokenizer, WhisperForConditionalGeneration}=lib;
+  const dtype = id.includes("turbo")
+    ? {encoder_model:"fp16", decoder_model_merged:"q4"} : "q8";
+  let last=null;
+  for(let t=1;t<=MAX_TRIES;t++){
+    const tag = t===1 ? "" : " (재시도 "+t+"/"+MAX_TRIES+")";
+    $("status").textContent="모델 로드 중"+tag+"… 첫 사용 시 다운로드 후 브라우저에 캐시됩니다.";
+    try{
+      const cb=p=>{ if(p.status==="progress"&&p.total)
+        $("status").textContent="모델 다운로드"+tag+": "+p.file+" "+Math.round(p.progress)+"%"; };
+      PROC = await AutoProcessor.from_pretrained(id,{progress_callback:cb});
+      TOK  = await AutoTokenizer.from_pretrained(id,{progress_callback:cb});
+      MODEL= await WhisperForConditionalGeneration.from_pretrained(id,
+               {dtype, device: hasGPU?"webgpu":"wasm", progress_callback:cb});
+      loadedModel=id; $("dlWarn").classList.add("hidden");
+      return;
+    }catch(e){
+      last=e; MODEL=null;
+      if(!navigator.onLine){ throw new Error("인터넷 연결이 끊어졌습니다."); }
+      if(t<MAX_TRIES){
+        $("dlWarn").classList.remove("hidden");
+        for(let s=Math.min(2**t,15);s>0;s--){
+          $("status").textContent="다운로드 실패 — "+s+"초 후 재시도합니다. 이미 받은 파일은 유지됩니다.";
+          await sleep(1000);
+        }
+      }
+    }
+  }
+  throw new Error("모델을 "+MAX_TRIES+"회 시도했으나 불러오지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요. ("+(last&&last.message||last)+")");
+}
+
+/* Whisper's own confidence: mean log-probability of the tokens it chose.
+   transformers.js ignores output_scores, so the logits are captured through a
+   custom LogitsProcessor and the chosen token is read from the next step.   */
+async function transcribe(audio){
+  const {LogitsProcessor, LogitsProcessorList}=libCache;
+  const inputs=await PROC(audio);
+  let prev=null, prevLen=0, sumLP=0, nTok=0, ok=true;
+  const lastRow=(t)=>{
+    const d=t&&t.data; if(!d||!d.length) return null;
+    const v=t.dims[t.dims.length-1];
+    return d.length>v ? d.subarray(d.length-v) : d;
+  };
+  const step=(row,tokenId)=>{
+    let mx=-Infinity;
+    for(let i=0;i<row.length;i++) if(row[i]>mx) mx=row[i];
+    let se=0;
+    for(let i=0;i<row.length;i++) se+=Math.exp(row[i]-mx);
+    sumLP += (row[tokenId]-mx) - Math.log(se); nTok++;
+  };
+  class Conf extends LogitsProcessor{
+    _call(input_ids, logits){
+      try{
+        const ids=Array.from(input_ids[0]).map(Number);
+        const row=lastRow(logits);
+        if(!row){ ok=false; return logits; }
+        if(prev && ids.length===prevLen+1) step(prev, ids[ids.length-1]);
+        prev=Float32Array.from(row); prevLen=ids.length;
+      }catch(e){ ok=false; }
+      return logits;
+    }
+  }
+  const lpl=new LogitsProcessorList(); lpl.push(new Conf());
+  const out=await MODEL.generate({...inputs, max_new_tokens:128,
+    language:"en", task:"transcribe", logits_processor:lpl, return_dict_in_generate:true});
+  const seq=out.sequences ? out.sequences : out;
+  const ids=Array.from(seq.tolist()[0]).map(Number);
+  if(ok && prev && ids.length===prevLen+1) step(prev, ids[ids.length-1]);
+  const text=TOK.decode(ids,{skip_special_tokens:true}).trim();
+  const avg = (ok && nTok) ? sumLP/nTok : null;
+  if(avg===null) confAvailable=false;
+  return {text, avgLogprob: avg===null?null:+avg.toFixed(4),
+          conf: avg===null?null:+Math.exp(avg).toFixed(3)};
+}
+
+/* ============================================================
+   file handling / run loop
+   ============================================================ */
+let FILES=[], RESULTS=[];
 const drop=$("drop");
 drop.onclick=()=>$("fileIn").click();
 drop.ondragover=e=>{e.preventDefault(); drop.classList.add("on");};
@@ -239,170 +412,116 @@ function takeFiles(list){
   $("status").textContent=FILES.length?"준비 완료. [전사 및 채점 시작]을 누르세요.":"오디오 파일이 없습니다.";
 }
 
-/* ---------- model loading with retry ----------
-   Large model files are fetched from a CDN and the transfer can fail on a
-   flaky connection. Already-downloaded files stay in the browser cache, so
-   each retry resumes from where the previous attempt stopped.            */
-const MAX_TRIES = 5;
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-let libCache = null;
-
-async function loadLib(){
-  if(libCache) return libCache;
-  const urls=[
-    "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0",
-    "https://unpkg.com/@huggingface/transformers@3.4.0"
-  ];
-  let last=null;
-  for(let t=1;t<=MAX_TRIES;t++){
-    const url=urls[(t-1)%urls.length];
-    try{ libCache=await import(url); return libCache; }
-    catch(e){
-      last=e;
-      $("status").textContent="라이브러리 로드 실패 — 재시도 "+t+"/"+MAX_TRIES+"…";
-      if(t<MAX_TRIES) await sleep(Math.min(1000*2**t, 8000));
-    }
-  }
-  throw new Error("Whisper 라이브러리를 불러오지 못했습니다: "+(last&&last.message||last));
-}
-
-async function loadModel(id){
-  if(transcriber && loadedModel===id) return transcriber;
-  const {pipeline}=await loadLib();
-  const opts={
-    device: hasGPU?"webgpu":"wasm",
-    dtype: id.includes("turbo")?{encoder_model:"fp16",decoder_model_merged:"q4"}:"q8"
-  };
-  let last=null;
-  for(let t=1;t<=MAX_TRIES;t++){
-    const tag = t===1 ? "" : " (재시도 "+t+"/"+MAX_TRIES+")";
-    $("status").textContent="모델 로드 중"+tag+"… 첫 사용 시 다운로드 후 브라우저에 캐시됩니다.";
-    try{
-      transcriber=await pipeline("automatic-speech-recognition", id, Object.assign({}, opts, {
-        progress_callback:p=>{
-          if(p.status==="progress"&&p.total)
-            $("status").textContent="모델 다운로드"+tag+": "+p.file+" "+Math.round(p.progress)+"%";
-          else if(p.status==="ready")
-            $("status").textContent="모델 준비 완료 — 전사를 시작합니다…";
-        }
-      }));
-      loadedModel=id;
-      $("dlWarn").classList.add("hidden");
-      return transcriber;
-    }catch(e){
-      last=e; transcriber=null;
-      if(!navigator.onLine){
-        $("status").textContent="인터넷 연결이 끊어졌습니다. 연결 후 다시 시도하세요.";
-        throw new Error("오프라인 상태입니다.");
-      }
-      if(t<MAX_TRIES){
-        const waitS=Math.min(2**t, 15);
-        $("dlWarn").classList.remove("hidden");
-        for(let s=waitS;s>0;s--){
-          $("status").textContent="다운로드 실패 — "+s+"초 후 재시도합니다 ("+t+"/"+(MAX_TRIES-1)+"). "+
-            "이미 받은 파일은 유지되므로 이어서 진행됩니다.";
-          await sleep(1000);
-        }
-      }
-    }
-  }
-  throw new Error("모델을 "+MAX_TRIES+"회 시도했으나 불러오지 못했습니다. "+
-    "네트워크를 확인하고 [전사 및 채점 시작]을 다시 눌러 주세요. ("+(last&&last.message||last)+")");
-}
-
 $("runBtn").onclick=async()=>{
-  $("runBtn").disabled=true; RESULTS=[]; $("cards").innerHTML="";
+  $("runBtn").disabled=true; RESULTS=[]; $("rows").innerHTML="";
+  confAvailable=true; $("confWarn").classList.add("hidden");
   const t0=performance.now();
   try{
-    const asr=await loadModel($("modelSel").value);
+    await loadModel($("modelSel").value);
     for(let k=0;k<FILES.length;k++){
       const f=FILES[k];
       $("status").textContent="전사 중 ("+(k+1)+"/"+FILES.length+"): "+f.name;
       $("progFill").style.width=(k/FILES.length*100)+"%";
       const m=f.name.match(FNAME_RE);
       const pid=m?m[1]:"?", item=m?parseInt(m[2],10):null;
-      let text="", dur=null, err=null;
-      for(let t=1;t<=2;t++){          // one retry per file for transient failures
+      let r={text:"",avgLogprob:null,conf:null}, dur=null, err=null;
+      for(let t=1;t<=2;t++){
         try{
           const {data,dur:d}=await decodeTo16k(f); dur=d;
-          const out=await asr(data,{language:"english",task:"transcribe"});
-          text=(out.text||"").trim(); err=null; break;
+          r=await transcribe(data); err=null; break;
         }catch(e){
           err=String(e&&e.message||e);
-          if(t<2){
-            $("status").textContent="재시도 ("+(k+1)+"/"+FILES.length+"): "+f.name;
-            await sleep(800);
-          }
+          if(t<2){ $("status").textContent="재시도 ("+(k+1)+"/"+FILES.length+"): "+f.name; await sleep(800); }
         }
       }
       const target=item?TARGETS[item]||"":"";
-      const sc=target?scorePair(target,text):null;
-      RESULTS.push({file:f, name:f.name, pid, item, target, text, dur, err, sc});
-      renderCard(RESULTS[RESULTS.length-1]);
-      renderSummary();
+      RESULTS.push({file:f,name:f.name,pid,item,target,text:r.text,dur,err,
+        conf:r.conf, avgLogprob:r.avgLogprob, sc: target?scorePair(target,r.text):null});
+      render();
     }
     $("progFill").style.width="100%";
     $("status").textContent="완료 — "+FILES.length+"개 파일, "+((performance.now()-t0)/1000).toFixed(1)+"초 "+
       "("+loadedModel.split("/").pop()+", "+(hasGPU?"WebGPU":"WASM")+")";
-    $("csvBtn").disabled=$("jsonBtn").disabled=false;
-  }catch(e){
-    $("status").textContent="오류: "+(e&&e.message||e);
-  }
+    if(!confAvailable) $("confWarn").classList.remove("hidden");
+  }catch(e){ $("status").textContent="오류: "+(e&&e.message||e); }
   $("runBtn").disabled=false;
 };
 
+/* ============================================================
+   rendering
+   ============================================================ */
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 function diffHtml(sc,text){
-  if(!sc||!sc.ops.length)
-    return "<span class='w-om'>"+esc(text||"(no speech detected)")+"</span>";
+  if(!sc||!sc.ops.length) return "<span class='w-om'>"+esc(text||"(no speech detected)")+"</span>";
   return sc.ops.map(o=>{
     const h=o.h.join(" "), r=o.r.join(" ");
-    if(o.t==="eq")return esc(h);
-    if(o.t==="sub")return "<span class='w-sub' title='for: "+esc(r)+"'>"+esc(h)+"</span>";
-    if(o.t==="ins")return "<span class='w-ins' title='inserted'>"+esc(h)+"</span>";
+    if(o.t==="eq")  return esc(h);
+    if(o.t==="sub") return "<span class='w-sub' title='target: "+esc(r)+"'>"+esc(h)+"</span>";
+    if(o.t==="ins") return "<span class='w-ins' title='inserted'>"+esc(h)+"</span>";
     return "<span class='w-om' title='omitted: "+esc(r)+"'>▲</span>";
   }).join(" ");
 }
-function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
-
-function renderCard(r){
-  const d=document.createElement("div");
-  const acc=r.sc?r.sc.acc:null;
-  d.className="card"+(r.err||(acc!==null&&acc<50)?" sevb":"");
-  const syl=r.item?SYL[r.item-1]:"";
-  d.innerHTML=
-    "<div class='ctop'><span class='it'>"+(r.item?"Item "+r.item:esc(r.name))+
-    "<small>"+esc(r.pid)+(syl?" · "+syl+" syll":"")+(r.dur?" · "+r.dur.toFixed(1)+" s":"")+"</small></span>"+
-    "<span class='acc"+(acc!==null&&acc<50?" low":"")+"'>"+(acc===null?"—":acc.toFixed(1)+"%")+"</span></div>"+
-    "<div class='scoreline'><button class='play'>▶</button>"+
-    "<div class='bar'><div style='width:"+(acc||0)+"%'></div></div>"+
-    "<span class='nums'>WER "+(r.sc?r.sc.wer.toFixed(3).replace(/^0/,""):"—")+
-    " · CER "+(r.sc?r.sc.cer.toFixed(3).replace(/^0/,""):"—")+"</span></div>"+
-    (r.err?"<div class='warnbox'>"+esc(r.err)+"</div>":
-    "<div class='gtr'><span class='tag'>GT</span>"+esc(r.sc?r.sc.gt:"")+"<br>"+
-    "<span class='tag'>TR</span>"+diffHtml(r.sc,r.text)+"</div>");
-  d.querySelector(".play").onclick=function(){ new Audio(URL.createObjectURL(r.file)).play(); };
-  $("cards").appendChild(d);
-}
-function renderSummary(){
+function render(){
+  if(!RESULTS.length) return;
+  $("resPanel").classList.remove("hidden");
   const scored=RESULTS.filter(r=>r.sc);
-  if(!scored.length)return;
-  $("sumPanel").classList.remove("hidden");
-  const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
-  $("tAcc").textContent=mean(scored.map(r=>r.sc.acc)).toFixed(1)+"%";
-  $("tWer").textContent=mean(scored.map(r=>r.sc.wer)).toFixed(3).replace(/^0/,"");
-  $("tCer").textContent=mean(scored.map(r=>r.sc.cer)).toFixed(3).replace(/^0/,"");
-  $("tN").textContent=scored.length+" /"+RESULTS.length;
+  const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+  const mAcc=mean(scored.map(r=>r.sc.acc));
+  const mWer=mean(scored.map(r=>r.sc.wer));
+  const cs=RESULTS.filter(r=>r.conf!=null).map(r=>r.conf);
+  const mConf=mean(cs);
   const pids=[...new Set(RESULTS.map(r=>r.pid))];
-  $("sumTitle").textContent="결과 — "+pids.join(", ");
-  $("sumMeta").textContent=(loadedModel||"")+" · greedy decoding · normalizer v1 · in-browser ("+(hasGPU?"WebGPU":"WASM")+")";
-}
+  $("pTitle").textContent=pids.join(", ");
+  $("pStats").innerHTML="평균 정확도 <b>"+(mAcc==null?"—":mAcc.toFixed(1)+"%")+"</b> · "+
+    "평균 WER <b>"+(mWer==null?"—":mWer.toFixed(3).replace(/^0/,""))+"</b>"+
+    (mConf!=null?" · 평균 확신도 <b>"+mConf.toFixed(2)+"</b>":"")+
+    " · 채점 <b>"+scored.length+"</b>/30";
+  $("foot").textContent="모델 "+(loadedModel||"")+" · greedy decoding · "+
+    (hasGPU?"WebGPU":"WASM")+" · normalizer v2 (숫자 풀어쓰기, 축약형 확장, 소유격 보존, "+
+    "town house→townhouse) · WER = (대치+누락+삽입)/목표 단어 수, 1.0에서 절단 · "+
+    "Confidence = Whisper가 선택한 토큰의 평균 확률(괄호 안은 평균 로그확률)";
 
+  const sort=$("sortSel").value;
+  const list=RESULTS.slice();
+  if(sort==="acc") list.sort((a,b)=>(a.sc?a.sc.acc:101)-(b.sc?b.sc.acc:101));
+  else if(sort==="conf") list.sort((a,b)=>(a.conf==null?9:a.conf)-(b.conf==null?9:b.conf));
+  else list.sort((a,b)=>(a.item||99)-(b.item||99));
+
+  $("rows").innerHTML=list.map(r=>{
+    const acc=r.sc?r.sc.acc:null, wer=r.sc?r.sc.wer:null;
+    const syl=r.item?SYL[r.item-1]:"";
+    const pill = wer==null?"p1" : wer===0?"p0" : wer>=0.3?"p2":"p1";
+    return "<tr>"+
+      "<td class='c-it'>"+(r.item?String(r.item).padStart(2,"0"):"—")+(syl?" · "+syl+"σ":"")+"</td>"+
+      "<td>"+(r.err
+        ? "<span class='errcell'>"+esc(r.err)+"</span>"
+        : "<span class='c-tgt'><span class='c-lab'>T</span>"+esc(r.sc?r.sc.gt:"")+"</span>"+
+          "<span class='c-hyp'><span class='c-lab'>W</span>"+diffHtml(r.sc,r.text)+"</span>")+"</td>"+
+      "<td class='c-n'><span class='acc"+(acc!=null&&acc<50?" low":"")+"'>"+
+        (acc==null?"—":acc.toFixed(1)+"%")+"</span></td>"+
+      "<td class='c-n'><span class='pill "+pill+"'>"+
+        (wer==null?"—":wer.toFixed(3).replace(/^0/,""))+"</span></td>"+
+      "<td class='conf'>"+(r.conf==null?"—":"<b>"+r.conf.toFixed(2)+"</b> "+r.avgLogprob)+"</td>"+
+      "<td><button class='mini' data-f='"+esc(r.name)+"'>▶</button></td></tr>";
+  }).join("");
+
+  $("rows").querySelectorAll(".mini").forEach(b=>{
+    b.onclick=()=>{
+      const r=RESULTS.find(x=>x.name===b.getAttribute("data-f"));
+      if(r) new Audio(URL.createObjectURL(r.file)).play();
+    };
+  });
+}
+$("sortSel").onchange=render;
+
+/* ---------- export ---------- */
 $("csvBtn").onclick=()=>{
-  const cols=["participant","item","target","transcription","wer","cer","accuracy_pct","duration_s","file","model"];
+  const cols=["participant","item","target","whisper","wer","accuracy_pct",
+              "confidence","avg_logprob","duration_s","file","model","normalizer"];
   const rows=[cols.join(",")];
   RESULTS.forEach(r=>rows.push([r.pid,r.item??"",r.target,r.text,
-    r.sc?r.sc.wer:"",r.sc?r.sc.cer:"",r.sc?r.sc.acc:"",
-    r.dur?r.dur.toFixed(2):"",r.name,loadedModel].map(v=>{
+    r.sc?r.sc.wer:"", r.sc?r.sc.acc:"", r.conf??"", r.avgLogprob??"",
+    r.dur?r.dur.toFixed(2):"", r.name, loadedModel, "v2"].map(v=>{
       v=String(v??""); return (v.includes(",")||v.includes('"'))?'"'+v.replace(/"/g,'""')+'"':v;
     }).join(",")));
   dl(new Blob([rows.join("\n")],{type:"text/csv"}),"eit_scores.csv");
@@ -410,13 +529,14 @@ $("csvBtn").onclick=()=>{
 $("jsonBtn").onclick=()=>{
   const pids=[...new Set(RESULTS.map(r=>r.pid))];
   const out={participant:pids.join("+"),
-    meta:{whisper_model:loadedModel,decoding:"greedy (transformers.js, in-browser)",
-      normalizer:"v1 (lowercase; strip all but [a-z0-9' ]; collapse whitespace)",
+    meta:{whisper_model:loadedModel, decoding:"greedy (transformers.js, in-browser)",
+      normalizer:"v2 (lowercase; numbers spelled out; contractions expanded; possessives kept; town house->townhouse)",
+      confidence:"mean probability of tokens selected by Whisper",
       scored_at:new Date().toISOString()},
-    items:RESULTS.map(r=>({item:r.item,target:r.target,transcription_raw:r.text,
-      transcription_corrected:null,wer:r.sc?r.sc.wer:null,cer:r.sc?r.sc.cer:null,
-      accuracy_pct:r.sc?r.sc.acc:null,ops:r.sc?r.sc.ops:null,
-      duration_s:r.dur?+r.dur.toFixed(2):null,flag:"",file:r.name,reviewed:false}))};
+    items:RESULTS.map(r=>({item:r.item, target:r.target, transcription_raw:r.text,
+      transcription_corrected:null, wer:r.sc?r.sc.wer:null, accuracy_pct:r.sc?r.sc.acc:null,
+      confidence:r.conf, avg_logprob:r.avgLogprob, ops:r.sc?r.sc.ops:null,
+      duration_s:r.dur?+r.dur.toFixed(2):null, flag:"", file:r.name, reviewed:false}))};
   dl(new Blob([JSON.stringify(out,null,1)],{type:"application/json"}),
      (pids[0]||"results")+"_results.json");
 };
