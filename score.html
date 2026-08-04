@@ -108,6 +108,9 @@
     <div class="status" id="status">파일을 선택하세요.</div>
     <div class="warnbox hidden" id="wgpuWarn">이 브라우저는 WebGPU를 지원하지 않아 CPU(WASM)로
       실행됩니다 — 매우 느릴 수 있습니다. 최신 Chrome/Edge 사용을 권장합니다.</div>
+    <div class="warnbox hidden" id="dlWarn">모델 다운로드 중 네트워크 오류가 발생해 자동으로
+      재시도하고 있습니다. 이미 받은 파일은 브라우저에 남아 있으므로 처음부터 다시 받지 않습니다.
+      계속 실패하면 잠시 후 [전사 및 채점 시작]을 다시 눌러 주세요.</div>
   </div>
 
   <div class="panel hidden" id="sumPanel">
@@ -201,12 +204,15 @@ function scorePair(target,hyp){
   return {wer:+wer.toFixed(4), cer:+cer.toFixed(4), acc:+((1-wer)*100).toFixed(1), ops, gt, tr};
 }
 
-/* ---------- audio decode to 16 kHz mono ---------- */
+/* ---------- audio decode to 16 kHz mono ----------
+   One shared AudioContext is reused for every file: browsers cap the number
+   of live AudioContexts, so creating one per file breaks on long batches. */
+let DEC_CTX=null;
 async function decodeTo16k(file){
   const buf=await file.arrayBuffer();
-  const ctx=new OfflineAudioContext(1,1,16000);
-  const audio=await new AudioContext().decodeAudioData(buf.slice(0));
-  const off=new OfflineAudioContext(1, Math.ceil(audio.duration*16000), 16000);
+  if(!DEC_CTX) DEC_CTX=new (window.AudioContext||window.webkitAudioContext)();
+  const audio=await DEC_CTX.decodeAudioData(buf);
+  const off=new OfflineAudioContext(1, Math.max(1,Math.ceil(audio.duration*16000)), 16000);
   const src=off.createBufferSource(); src.buffer=audio; src.connect(off.destination); src.start();
   const out=await off.startRendering();
   return {data:out.getChannelData(0), dur:audio.duration};
@@ -233,21 +239,75 @@ function takeFiles(list){
   $("status").textContent=FILES.length?"준비 완료. [전사 및 채점 시작]을 누르세요.":"오디오 파일이 없습니다.";
 }
 
+/* ---------- model loading with retry ----------
+   Large model files are fetched from a CDN and the transfer can fail on a
+   flaky connection. Already-downloaded files stay in the browser cache, so
+   each retry resumes from where the previous attempt stopped.            */
+const MAX_TRIES = 5;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let libCache = null;
+
+async function loadLib(){
+  if(libCache) return libCache;
+  const urls=[
+    "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0",
+    "https://unpkg.com/@huggingface/transformers@3.4.0"
+  ];
+  let last=null;
+  for(let t=1;t<=MAX_TRIES;t++){
+    const url=urls[(t-1)%urls.length];
+    try{ libCache=await import(url); return libCache; }
+    catch(e){
+      last=e;
+      $("status").textContent="라이브러리 로드 실패 — 재시도 "+t+"/"+MAX_TRIES+"…";
+      if(t<MAX_TRIES) await sleep(Math.min(1000*2**t, 8000));
+    }
+  }
+  throw new Error("Whisper 라이브러리를 불러오지 못했습니다: "+(last&&last.message||last));
+}
+
 async function loadModel(id){
-  if(transcriber&&loadedModel===id) return transcriber;
-  $("status").textContent="모델 로드 중… (첫 사용 시 다운로드 후 브라우저에 캐시됩니다)";
-  const {pipeline}=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0");
+  if(transcriber && loadedModel===id) return transcriber;
+  const {pipeline}=await loadLib();
   const opts={
     device: hasGPU?"webgpu":"wasm",
-    dtype: id.includes("turbo")?{encoder_model:"fp16",decoder_model_merged:"q4"}:"q8",
-    progress_callback:p=>{
-      if(p.status==="progress"&&p.total)
-        $("status").textContent="모델 다운로드: "+p.file+" "+Math.round(p.progress)+"%";
-    }
+    dtype: id.includes("turbo")?{encoder_model:"fp16",decoder_model_merged:"q4"}:"q8"
   };
-  transcriber=await pipeline("automatic-speech-recognition", id, opts);
-  loadedModel=id;
-  return transcriber;
+  let last=null;
+  for(let t=1;t<=MAX_TRIES;t++){
+    const tag = t===1 ? "" : " (재시도 "+t+"/"+MAX_TRIES+")";
+    $("status").textContent="모델 로드 중"+tag+"… 첫 사용 시 다운로드 후 브라우저에 캐시됩니다.";
+    try{
+      transcriber=await pipeline("automatic-speech-recognition", id, Object.assign({}, opts, {
+        progress_callback:p=>{
+          if(p.status==="progress"&&p.total)
+            $("status").textContent="모델 다운로드"+tag+": "+p.file+" "+Math.round(p.progress)+"%";
+          else if(p.status==="ready")
+            $("status").textContent="모델 준비 완료 — 전사를 시작합니다…";
+        }
+      }));
+      loadedModel=id;
+      $("dlWarn").classList.add("hidden");
+      return transcriber;
+    }catch(e){
+      last=e; transcriber=null;
+      if(!navigator.onLine){
+        $("status").textContent="인터넷 연결이 끊어졌습니다. 연결 후 다시 시도하세요.";
+        throw new Error("오프라인 상태입니다.");
+      }
+      if(t<MAX_TRIES){
+        const waitS=Math.min(2**t, 15);
+        $("dlWarn").classList.remove("hidden");
+        for(let s=waitS;s>0;s--){
+          $("status").textContent="다운로드 실패 — "+s+"초 후 재시도합니다 ("+t+"/"+(MAX_TRIES-1)+"). "+
+            "이미 받은 파일은 유지되므로 이어서 진행됩니다.";
+          await sleep(1000);
+        }
+      }
+    }
+  }
+  throw new Error("모델을 "+MAX_TRIES+"회 시도했으나 불러오지 못했습니다. "+
+    "네트워크를 확인하고 [전사 및 채점 시작]을 다시 눌러 주세요. ("+(last&&last.message||last)+")");
 }
 
 $("runBtn").onclick=async()=>{
@@ -262,11 +322,19 @@ $("runBtn").onclick=async()=>{
       const m=f.name.match(FNAME_RE);
       const pid=m?m[1]:"?", item=m?parseInt(m[2],10):null;
       let text="", dur=null, err=null;
-      try{
-        const {data,dur:d}=await decodeTo16k(f); dur=d;
-        const out=await asr(data,{language:"english",task:"transcribe"});
-        text=(out.text||"").trim();
-      }catch(e){ err=String(e&&e.message||e); }
+      for(let t=1;t<=2;t++){          // one retry per file for transient failures
+        try{
+          const {data,dur:d}=await decodeTo16k(f); dur=d;
+          const out=await asr(data,{language:"english",task:"transcribe"});
+          text=(out.text||"").trim(); err=null; break;
+        }catch(e){
+          err=String(e&&e.message||e);
+          if(t<2){
+            $("status").textContent="재시도 ("+(k+1)+"/"+FILES.length+"): "+f.name;
+            await sleep(800);
+          }
+        }
+      }
       const target=item?TARGETS[item]||"":"";
       const sc=target?scorePair(target,text):null;
       RESULTS.push({file:f, name:f.name, pid, item, target, text, dur, err, sc});
