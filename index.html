@@ -741,7 +741,9 @@ const DEFAULTS = {
   targetPeakDb: -12,        // the level the suggested gain step aims at, as in EIT Studio
   beepFreqHz: 1000,
   beepMs: 250,              // matches the ~0.25 s ring tone in the Wu et al. (2022) recordings
-  interTrialMs: 400,   // matches the lead-in EIT Studio leaves before a stimulus
+  interTrialMs: 0,     // the source recording runs its items back to back: summing the
+                       // thirty cycles of EIT A gives 455.0 s against a file of 454.0 s,
+                       // which leaves no room for a gap between them
   // Researcher dashboard (password-gated). Blank => hide the link on the final screen.
   dashboardUrl: "https://script.google.com/a/macros/khu.ac.kr/s/AKfycbyTKEFQDswZ66vlOl7TPo1mvN5rJcgfrc4mO-7Ao_3eLkIzC3gtv-s68_7QxFMM9ysg/exec"
 };
