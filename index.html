@@ -358,14 +358,22 @@
               data-i18n="gainSummary">Adjust the gain manually</summary>
             <div style="margin-top:12px">
               <div class="slider-row">
-                <input type="range" id="gainSlider" min="-20" max="40" step="1">
+                <select id="gainSlider">
+                  <option value="0">None (0 dB)</option>
+                  <option value="6">+6 dB</option>
+                  <option value="12">+12 dB</option>
+                  <option value="18">+18 dB</option>
+                  <option value="24">+24 dB</option>
+                </select>
                 <span class="slider-val" id="gainVal">0 dB</span>
               </div>
-              <div class="hint">A fixed, linear boost applied before recording. Unlike automatic
-                gain control it does not vary during speech, so relative amplitude is preserved.
-                If even +40 dB is not enough, raise the input volume for this microphone in your
-                operating system's sound settings — that is a hardware-level gain this page
-                cannot reach.</div>
+              <div class="hint">A fixed, linear boost applied before recording, in the same steps
+                the desktop tool offers. Unlike automatic gain control it does not vary during
+                speech, so relative amplitude is preserved — but it raises the noise by exactly as
+                much as the speech, so it makes a quiet recording louder rather than cleaner. If
+                +24 dB is not enough, raise the input volume for this microphone in your operating
+                system's sound settings — that is a hardware-level gain this page cannot
+                reach.</div>
             </div>
           </details>
           <div class="row" style="justify-content:flex-end">
@@ -586,28 +594,41 @@
       <div class="full">
         <label for="cfgFormat">Recording format</label>
         <select id="cfgFormat">
-          <option value="wav16">16 kHz mono WAV — recommended for Whisper</option>
+          <option value="wav16">16-bit mono WAV at the device rate — matches EIT Studio</option>
           <option value="codec">Browser codec (WebM/Opus or MP4/AAC)</option>
         </select>
-        <div class="hint">WAV is uncompressed and identical across browsers; Whisper
-          resamples to 16 kHz mono regardless, so this avoids a second resampling pass.
-          Approximately 32 KB per second, or roughly 6 MB for a full 30-item session.</div>
+        <div class="hint">WAV is uncompressed and identical across browsers. Capture runs at
+          the participant device's own rate, as the desktop tool does, so that a response
+          collected online and one collected in the laboratory are the same kind of file.
+          At the 48 kHz most devices report that is roughly 96 KB per second, or about 18 MB for
+          a full 30-item session; Whisper resamples to 16 kHz internally either way, so the
+          rate costs upload size rather than transcription accuracy.</div>
       </div>
       <div>
         <label for="cfgGainDb">Input gain (dB)</label>
-        <input type="number" id="cfgGainDb" min="-20" max="40" step="1">
-        <div class="hint">Fixed linear boost. Hold this constant across the whole study
-          if amplitude is a variable of interest.</div>
+        <select id="cfgGainDb">
+          <option value="0">None (0 dB)</option>
+          <option value="6">+6 dB</option>
+          <option value="12">+12 dB</option>
+          <option value="18">+18 dB</option>
+          <option value="24">+24 dB</option>
+        </select>
+        <div class="hint">Fixed linear boost, in the same steps the desktop tool offers. It
+          raises the noise by as much as the speech, so it makes a quiet recording louder rather
+          than cleaner. Hold it constant across the whole study if amplitude is a variable of
+          interest.</div>
       </div>
       <div>
         <label for="cfgAllowCalib">Microphone check behaviour</label>
         <select id="cfgAllowCalib">
-          <option value="1">Report and set gain (recommended)</option>
-          <option value="0">Report only, keep gain fixed</option>
+          <option value="0">Report only, keep gain fixed (recommended)</option>
+          <option value="1">Report and set gain automatically</option>
         </select>
-        <div class="hint">Setting gain per participant maximises transcription quality but
-          makes recorded amplitude non-comparable across participants. Choose "report only"
-          if intensity is a variable of interest.</div>
+        <div class="hint">"Report only" is the setting the desktop tool mirrors: the check
+          names the step that would put the peak near −12 dBFS and leaves the choice to whoever
+          is at the machine, so every participant is recorded through the same gain. Setting the
+          gain automatically instead maximises transcription quality on a poor microphone, but
+          makes recorded amplitude non-comparable across participants.</div>
       </div>
       <div class="full">
         <label>Microphone processing</label>
@@ -708,19 +729,19 @@ const DEFAULTS = {
   syllableRef: 7,           // reference syllable count
   windowMultiplier: 1.6,
   windowConstantMs: 2000,
-  windowMinMs: 4000,
-  windowMaxMs: 20000,
+  windowMinMs: 500,         // matches EIT Studio: a floor only, not a working bound
+  windowMaxMs: 60000,       // kept as a guard; EIT Studio applies no upper clamp
   echoCancellation: false,
   noiseSuppression: false,
   autoGainControl:  false,
-  inputGainDb: 0,           // fixed linear gain (attenuation allowed; calibration sets it)
-  allowCalibration: 1,      // 0 = participants cannot run the gain-setting check
+  inputGainDb: 0,           // fixed linear gain, chosen by the researcher in steps
+  allowCalibration: 0,      // 0 = the check reports only and never moves the gain
   recordFormat: "wav16",    // "wav16" = 16 kHz mono PCM (Whisper-native) | "codec"
   uiLang: "en",             // default participant interface language: "en" | "ko"
-  targetPeakDb: -9,         // gain calibration aims to put speech peaks here
+  targetPeakDb: -12,        // the level the suggested gain step aims at, as in EIT Studio
   beepFreqHz: 1000,
   beepMs: 250,              // matches the ~0.25 s ring tone in the Wu et al. (2022) recordings
-  interTrialMs: 700,
+  interTrialMs: 400,   // matches the lead-in EIT Studio leaves before a stimulus
   // Researcher dashboard (password-gated). Blank => hide the link on the final screen.
   dashboardUrl: "https://script.google.com/a/macros/khu.ac.kr/s/AKfycbyTKEFQDswZ66vlOl7TPo1mvN5rJcgfrc4mO-7Ao_3eLkIzC3gtv-s68_7QxFMM9ysg/exec"
 };
@@ -857,8 +878,10 @@ en: {
     "input volume for this device in your operating system's sound settings as well.",
   calibHot: "This microphone is very loud even at maximum attenuation. Lower the " +
     "input volume for this device in your operating system's sound settings.",
-  calibSet: "Recording level is set. You do not need the meter to reach any " +
+  calibSet: "The level is fine as it is. You do not need the meter to reach any " +
     "particular point — a clean signal matters more than a loud one.",
+  fmtGainTip: db => "The recording is quieter than it needs to be. Open “Adjust the gain " +
+    "manually” below and set it to +" + db + " dB, then run the check again.",
   sumLocal: "Recordings are held in this browser session only. Use the button below " +
     "to save them before closing the page.",
   fmtProgress: (isPractice, i, n) =>
@@ -983,8 +1006,10 @@ ko: {
     "소리 설정에서 이 마이크의 입력 음량도 함께 높여 주십시오.",
   calibHot: "마이크 입력이 최대 감쇠로도 너무 큽니다. 운영체제의 소리 설정에서 " +
     "이 마이크의 입력 음량을 낮춰 주세요.",
-  calibSet: "녹음 음량이 설정되었습니다. 측정기가 특정 지점에 도달할 필요는 없습니다. " +
+  calibSet: "현재 음량이면 충분합니다. 측정기가 특정 지점에 도달할 필요는 없습니다. " +
     "큰 소리보다 깨끗한 신호가 더 중요합니다.",
+  fmtGainTip: db => "녹음이 필요한 것보다 작습니다. 아래 “음량을 직접 조정” 항목을 열어 " +
+    "+" + db + " dB로 설정한 뒤 점검을 다시 실행해 주십시오.",
   sumLocal: "녹음 파일은 현재 브라우저에만 저장되어 있습니다. 페이지를 닫기 전에 " +
     "아래 버튼으로 저장하십시오.",
   fmtProgress: (isPractice, i, n) =>
@@ -1231,6 +1256,10 @@ function responseWindowMs(stimMs, itemNo, isPractice){
   if(syll){
     raw = stimMs + CFG.syllableBaseMs +
           CFG.syllablePerExtraMs * Math.max(0, syll - CFG.syllableRef);
+  }else if(CFG.windowMode === "syllable"){
+    // No syllable count for this item — the practice sentences. EIT Studio falls
+    // back to the reference count here, which leaves the base and nothing added.
+    raw = stimMs + CFG.syllableBaseMs;
   }else{
     raw = stimMs * CFG.windowMultiplier + CFG.windowConstantMs;
   }
@@ -1279,16 +1308,11 @@ async function requestMic(){
   });
   S.mimeType = pickMime();
 
-  // Capture runs in its own AudioContext pinned to 16 kHz. Whisper resamples
-  // everything to 16 kHz mono internally, so capturing there directly avoids a
-  // second resampling stage and removes the WebM/MP4 codec split across browsers.
-  // Playback keeps its own full-rate context so stimulus fidelity is untouched.
-  const RATE = 16000;
-  try{
-    S.recCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: RATE });
-  }catch(e){
-    S.recCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
+  // Capture runs at the device's own rate, as the desktop tool does, so that a
+  // response collected online and one collected in the laboratory are the same
+  // kind of file. Whisper resamples to 16 kHz internally either way, so this
+  // costs upload size rather than transcription accuracy.
+  S.recCtx = new (window.AudioContext || window.webkitAudioContext)();
   if(S.recCtx.state === "suspended") await S.recCtx.resume();
 
   const c = S.recCtx;
@@ -1490,8 +1514,18 @@ async function runMicCheck(){
     $("gainVal").textContent = fmtDb(applied);
   }
 
-  const headroomShort = detected && (gainBefore + adjustDb) > 40;
-  const attenFloor = detected && (gainBefore + adjustDb) < -20;
+  /* With calibration off — the setting the desktop tool mirrors — the check
+     does not move the gain. It reports, and names the step that would put the
+     peak near the target, leaving the choice to whoever is at the machine. */
+  let suggest = 0;
+  if(detected && !CFG.allowCalibration && speech.peakDb < -18){
+    const want = gainBefore + Math.round(CFG.targetPeakDb - speech.peakDb);
+    const steps = [0, 6, 12, 18, 24].filter(v => v <= Math.min(24, want));
+    const pick = steps[steps.length - 1];
+    if(pick > gainBefore) suggest = pick;
+  }
+  const headroomShort = detected && CFG.allowCalibration && (gainBefore + adjustDb) > 40;
+  const attenFloor = detected && CFG.allowCalibration && (gainBefore + adjustDb) < -20;
   const rep = $("snrReport");
   rep.style.display = "block";
   rep.innerHTML = "";
@@ -1500,7 +1534,8 @@ async function runMicCheck(){
   line("Speech level     " + speech.rmsDb.toFixed(1) + " dBFS RMS, peak " +
        speech.peakDb.toFixed(1) + " dBFS");
   line("Speech-to-noise  " + snr.toFixed(1) + " dB");
-  line("Gain set to      +" + applied + " dB");
+  line("Gain              +" + applied + " dB");
+  if(suggest) line("Suggested gain   +" + suggest + " dB");
 
   S.checkDone = true;
   const v = $("levelVerdict");
@@ -1522,7 +1557,8 @@ async function runMicCheck(){
   }
 
   $("calibResult").textContent = headroomShort ? T("calibMaxed")
-    : attenFloor ? T("calibHot") : T("calibSet");
+    : attenFloor ? T("calibHot")
+    : suggest ? T("fmtGainTip")(suggest) : T("calibSet");
 
   S.peakDb = -99;
   S.clipCount = 0;
@@ -2001,8 +2037,8 @@ $("grantBtn").onclick = async () => {
   }
 };
 
-$("gainSlider").addEventListener("input", e => {
-  const db = parseInt(e.target.value, 10);
+$("gainSlider").addEventListener("change", e => {
+  const db = parseInt(e.target.value, 10) || 0;
   setGainDb(db);
   $("gainVal").textContent = fmtDb(db);
   S.peakDb = -99;
